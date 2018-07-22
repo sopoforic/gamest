@@ -1,4 +1,3 @@
-import configparser
 import ctypes
 import datetime
 import importlib
@@ -8,7 +7,6 @@ import pkg_resources
 import pkgutil
 import sys
 import webbrowser
-from logging.handlers import TimedRotatingFileHandler
 from shutil import copyfile
 
 import psutil
@@ -16,31 +14,9 @@ import psutil
 import gamest_plugins
 from .db import App, UserApp, PlaySession, Session
 from .util import format_time
-from . import plugins, DATA_DIR, LOG_DIR
-
-config = configparser.ConfigParser(delimiters=('=',))
-config.optionxform = lambda o: o
-config.read_dict({ 'options' : { 'visible_only' : 'True',
-                                      'debug' : 'False' } })
-
-CONFIG_PATH = os.path.join(DATA_DIR, 'gamest.conf')
-config.read([CONFIG_PATH])
-if not os.path.exists(CONFIG_PATH):
-    copyfile(pkg_resources.resource_filename('gamest', 'gamest.conf.default'), CONFIG_PATH)
-
-if config['options'].getboolean('debug'):
-    level = logging.DEBUG
-else:
-    level = logging.INFO
+from . import plugins, config
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=level,
-            format='%(asctime)-15s %(levelname)-8s %(name)s: %(message)s')
-LOG_FILE = os.path.join(LOG_DIR, 'gamest.log')
-
-handler = TimedRotatingFileHandler(LOG_FILE, when='midnight')
-handler.setFormatter(logging.Formatter('%(asctime)-15s %(levelname)-8s %(message)s'))
-logger.addHandler(handler)
 
 class FakeProcess:
     def __init__(self):
@@ -516,6 +492,7 @@ class Application(Frame):
             for p in persistent_plugins:
                 try:
                     self.persistent_plugins.append(p(self))
+                    logger.debug("Plugin activated: %s", p.__name__)
                 except Exception:
                     logger.exception("Could not initialize plugin %r.", p)
 
@@ -642,6 +619,12 @@ def main():
     if not ctypes.windll.shell32.IsUserAnAdmin():
         sys.exit(ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.argv[0], ' '.join(sys.argv[1:]), None, 1))
 
+    from pkg_resources import get_distribution, DistributionNotFound
+    try:
+        logger.info("Starting gamest %s", pkg_resources.get_distribution('gamest').version)
+    except pkg_resources.DistributionNotFound:
+        logger.info("Starting gamest (version not available)")
+
     global root
     global appli
     root = Tk()
@@ -662,7 +645,7 @@ def main():
         if hasattr(p, 'plugin') and issubclass(p.plugin, plugins.GamestPersistentPlugin)
     ]
 
-    logger.debug("Persistent plugins to activate: %s", persistent_plugins)
+    logger.debug("Persistent plugins to activate: %s", ', '.join(p.__name__ for p in persistent_plugins))
 
     session_plugins = [
         p.plugin
@@ -670,7 +653,7 @@ def main():
         if hasattr(p, 'plugin') and issubclass(p.plugin, plugins.GamestSessionPlugin)
     ]
 
-    logger.debug("Session plugins to activate: %s", session_plugins)
+    logger.debug("Session plugins to activate: %s", ', '.join(p.__name__ for p in session_plugins))
 
     appli = Application(master=root, persistent_plugins=persistent_plugins, session_plugins=session_plugins)
     root.after(1000, appli.run)
