@@ -13,7 +13,7 @@ setup(
     author_email="tracy.poff@gmail.com",
     include_package_data=True,
     packages=['gamest', 'gamest_plugins'],
-    install_requires=['sqlalchemy', 'psutil', 'requests'],
+    install_requires=['sqlalchemy', 'psutil', 'requests', 'appdirs'],
     setup_requires=['setuptools_scm'],
     use_scm_version=True,
     entry_points={

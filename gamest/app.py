@@ -4,17 +4,19 @@ import datetime
 import importlib
 import logging
 import os
+import pkg_resources
 import pkgutil
 import sys
 import webbrowser
 from logging.handlers import TimedRotatingFileHandler
+from shutil import copyfile
 
 import psutil
 
 import gamest_plugins
 from .db import App, UserApp, PlaySession, Session
 from .util import format_time
-from . import plugins, DATA_DIR
+from . import plugins, DATA_DIR, LOG_DIR
 
 config = configparser.ConfigParser(delimiters=('=',))
 config.optionxform = lambda o: o
@@ -23,6 +25,8 @@ config.read_dict({ 'options' : { 'visible_only' : 'True',
 
 CONFIG_PATH = os.path.join(DATA_DIR, 'gamest.conf')
 config.read([CONFIG_PATH])
+if not os.path.exists(CONFIG_PATH):
+    copyfile(pkg_resources.resource_filename('gamest', 'gamest.conf.default'), CONFIG_PATH)
 
 if config['options'].getboolean('debug'):
     level = logging.DEBUG
@@ -32,7 +36,7 @@ else:
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=level,
             format='%(asctime)-15s %(levelname)-8s %(name)s: %(message)s')
-LOG_FILE = os.path.join(DATA_DIR, 'gamest.log')
+LOG_FILE = os.path.join(LOG_DIR, 'gamest.log')
 
 handler = TimedRotatingFileHandler(LOG_FILE, when='midnight')
 handler.setFormatter(logging.Formatter('%(asctime)-15s %(levelname)-8s %(message)s'))
