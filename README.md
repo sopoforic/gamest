@@ -2,7 +2,50 @@
 
 Gamest is a tool for keeping a record of time spent playing video games.
 
-# License
+## Installation
+
+Use pip to install gamest:
+
+```
+pip install gamest
+```
+
+Gamest may be launched by calling `gamest` from the command line. The executable
+`gamest.exe` is located in python's `Scripts` folder, so a shortcut may be
+placed wherever is convenient.
+
+## Configuration
+
+Out of the box, gamest will track runtime of desired apps. To add an app to be
+tracked, start the app, then click 'Pick Game`, choose the app from the list,
+and click 'Pick Game' to select it. In most cases, no advanced settings will be
+required, so click 'Add Game' to finish adding the app to the database. In the
+future, the app will be automatically detected whenever it is running.
+
+Gamest settings are stored in `%APPDATA%\gamest\gamest.conf`. The default
+configuration is:
+
+```
+[options]
+# Set debug to True to enable logging of additional debug messages for
+# troubleshooting.
+debug = False
+
+# Only windows which are visible on the desktop will be shown in the
+# 'Pick Games' list. Set visible_only to False if you need to select
+# an app which doesn't present a visible window.
+visible_only = True
+
+[PlaySessionNotificationPlugin]
+# Send notifications when an app is started. This doesn't do anything
+# unless a notification service plugin, such as the discord webhook
+# notifier, is installed.
+send_begin = True
+```
+
+Plugins may require additional configuration.
+
+## License
 
 Copyright (C) 2018  Tracy Poff
 
