@@ -29,21 +29,35 @@ configuration is:
 [options]
 # Set debug to True to enable logging of additional debug messages for
 # troubleshooting.
+#
 # debug = False
 
 # Only windows which are visible on the desktop will be shown in the
 # 'Pick Games' list. Set visible_only to False if you need to select
 # an app which doesn't present a visible window.
+#
 # visible_only = True
+```
 
+Plugins may require additional configuration. Included with gamest is a plugin
+to send notification when game sessions begin or end. Its configuration is
+located in `%LOCALAPPDATA%\gamest\PlaySessionNotificationPlugin.conf`. The
+default configuration is:
+
+```
 [PlaySessionNotificationPlugin]
 # Send notifications when an app is started. This doesn't do anything
 # unless a notification service plugin, such as the discord webhook
 # notifier, is installed.
+#
 # send_begin = True
-```
 
-Plugins may require additional configuration.
+# Send notifications when an app is closed. This doesn't do anything
+# unless a notification service plugin, such as the discord webhook
+# notifier, is installed.
+#
+# send_end = True
+```
 
 ## License
 

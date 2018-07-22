@@ -1,11 +1,26 @@
+import configparser
 import logging
+import os
+import pkg_resources
+import weakref
+from shutil import copyfile
 
+from . import DATA_DIR
 from .errors import UnsupportedAppError
 
 class GamestPlugin:
     def __init__(self, application):
         self.logger = logging.getLogger(__name__ + '.' + self.__class__.__name__)
         self.application = application
+
+        self.config = configparser.ConfigParser(delimiters=('=',))
+
+        CONFIG_PATH = os.path.join(DATA_DIR, '{}.conf'.format(self.__class__.__name__))
+        self.config.read([CONFIG_PATH])
+        if not os.path.exists(CONFIG_PATH):
+            PKG = self.__module__.rsplit('.', 1)[0]
+            if pkg_resources.resource_exists(PKG, '{}.conf.default'.format(self.__class__.__name__)):
+                copyfile(pkg_resources.resource_filename(PKG, '{}.conf.default'.format(self.__class__.__name__)), CONFIG_PATH)
 
 class GamestPersistentPlugin(GamestPlugin):
     pass
@@ -18,16 +33,20 @@ class GamestSessionPlugin(GamestPlugin):
         super().__init__(application)
         self.play_session = application.play_session
 
-        self.start_bind = application.bind("<<GameStart>>", self.onGameStart, "+")
-        self.end_bind = application.bind("<<GameEnd>>", self.onGameEnd, "+")
+        weakstart = weakref.WeakMethod(self.onGameStart)
+        weakend = weakref.WeakMethod(self.onGameEnd)
 
-    def onGameStart(self):
+        self.start_bind = application.bind("<<GameStart>>", lambda e: weakstart()(e), "+")
+        self.end_bind = application.bind("<<GameEnd>>", lambda e: weakend()(e), "+")
+
+    def onGameStart(self, e):
         raise NotImplementedError
 
-    def onGameEnd(self):
+    def onGameEnd(self, e):
         raise NotImplementedError
 
     def __del__(self):
+        self.logger.debug("__del__ called on %r", self)
         self.cleanup()
     
     def cleanup(self):
@@ -51,7 +70,7 @@ class GameReporterPlugin(GamestSessionPlugin):
     def __init__(self, application):
         super().__init__(application)
 
-        self.user_app_id = application.config.getint(self.__class__.__name__, 'user_app_id', fallback=None)
+        self.user_app_id = self.config.getint(self.__class__.__name__, 'user_app_id', fallback=None)
 
         if self.user_app_id and (self.user_app_id != self.play_session.user_app_id):
             self.logger.debug("User app ID did not match: {} !+ {} (configured)".format(self.play_session.user_app_id, self.user_app_id))
@@ -60,7 +79,7 @@ class GameReporterPlugin(GamestSessionPlugin):
             self.logger.debug("Path did not match: {}.".format(self.play_session.user_app.path))
             raise UnsupportedAppError("Current app path does not match a supported path.")
 
-        self.interval = application.config.getint(self.__class__.__name__, 'interval', fallback=30*60*1000)
+        self.interval = self.config.getint(self.__class__.__name__, 'interval', fallback=30*60*1000)
         self.job = None
 
     def get_report(self):

@@ -6,7 +6,8 @@ class PlaySessionNotificationPlugin(GamestSessionPlugin):
         super().__init__(application)
 
         self.running = application.RUNNING
-        self.send_begin = application.config.getboolean('PlaySessionNotificationPlugin', 'send_begin', fallback=False)
+        self.send_begin = self.config.getboolean('PlaySessionNotificationPlugin', 'send_begin', fallback=True)
+        self.send_end = self.config.getboolean('PlaySessionNotificationPlugin', 'send_end', fallback=True)
         self.start_job = None
 
         self.logger.debug("Plugin initialized.\n\tsend_begin: %r", self.send_begin)
@@ -28,7 +29,7 @@ class PlaySessionNotificationPlugin(GamestSessionPlugin):
             self.logger.debug("onGameEnd called")
             if self.start_job:
                 self.application.after_cancel(self.start_job)
-            if (self.play_session.duration < 30):
+            if not self.send_end or self.play_session.duration < 30:
                 return
             for s in filter(lambda p: isinstance(p, NotificationService), self.application.persistent_plugins):
                 s.notify('{{user_name}} played **{}** for {}. Total: {}.'.format(

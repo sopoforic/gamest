@@ -119,7 +119,6 @@ def foreach_window(hwnd, lParam):
         return False
     else:
         seen.add((pid.value, buff.value))
-        logger.debug("process id %s text %s", pid.value, buff.value)
         return True
 
 def generate_report():
@@ -578,6 +577,7 @@ class Application(Frame):
                 for p in self.session_plugins:
                     try:
                         self.active_plugins.append(p(self))
+                        logger.debug("Plugin activated: %s", p.__name__)
                     except plugins.UnsupportedAppError:
                         pass
                     except Exception:
@@ -589,7 +589,6 @@ class Application(Frame):
                 self.time_text.set("{}".format(format_time(self.RUNNING[1].app.runtime)))
                 self.elapsed_text.set(format_time(0))
                 self.sent = False
-            logger.debug("Loop over, sleeping for five seconds")
             if self.RUNNING is None:
                 root.after(5000, self.run)
                 self.manual_session_button.config(state=NORMAL)

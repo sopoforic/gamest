@@ -1,0 +1,12 @@
+[PlaySessionNotificationPlugin]
+# Send notifications when an app is started. This doesn't do anything
+# unless a notification service plugin, such as the discord webhook
+# notifier, is installed.
+#
+# send_begin = True
+
+# Send notifications when an app is closed. This doesn't do anything
+# unless a notification service plugin, such as the discord webhook
+# notifier, is installed.
+#
+# send_end = True
