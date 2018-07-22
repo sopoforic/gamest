@@ -10,6 +10,9 @@ class PlaySessionNotificationPlugin(GamestSessionPlugin):
         self.send_end = self.config.getboolean('PlaySessionNotificationPlugin', 'send_end', fallback=True)
         self.start_job = None
 
+        self.logger.debug("Available notification services: %s",
+            list(p.__class__.__name__ for p in filter(lambda p: isinstance(p, NotificationService), self.application.persistent_plugins)))
+
         self.logger.debug("Plugin initialized.\n\tsend_begin: %r", self.send_begin)
 
     def onGameStart(self, e):
@@ -20,6 +23,7 @@ class PlaySessionNotificationPlugin(GamestSessionPlugin):
             if not self.send_begin or not self.running is self.application.RUNNING:
                 return
             for s in filter(lambda p: isinstance(p, NotificationService), self.application.persistent_plugins):
+                self.logger.debug("About to notify with %s", s.__class__.__name__)
                 s.notify('{{user_name}} began playing **{}**.'.format(
                     self.play_session.user_app.app.name))
         self.start_job = self.application.after(30000, _onGameStart)
