@@ -636,11 +636,8 @@ class Application(Frame):
             Session.commit()
 
 def main():
-    try:
-        if not ctypes.windll.shell32.IsUserAnAdmin():
-            ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
-    except:
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, __file__, None, 1)
+    if not ctypes.windll.shell32.IsUserAnAdmin():
+        sys.exit(ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.argv[0], ' '.join(sys.argv[1:]), None, 1))
 
     global root
     global appli

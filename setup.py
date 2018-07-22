@@ -11,6 +11,7 @@ setup(
     url='https://github.com/sopoforic/gamest',
     author="Tracy Poff",
     author_email="tracy.poff@gmail.com",
+    include_package_data=True,
     packages=['gamest', 'gamest_plugins'],
     install_requires=['sqlalchemy', 'psutil', 'requests'],
     setup_requires=['setuptools_scm'],

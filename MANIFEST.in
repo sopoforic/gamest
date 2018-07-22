@@ -1,0 +1,1 @@
+include gamest_plugins/play_session_notifier/*.py
