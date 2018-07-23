@@ -2,6 +2,7 @@ import configparser
 import logging
 import os
 from logging.handlers import TimedRotatingFileHandler
+from shutil import copyfile
 
 import appdirs
 

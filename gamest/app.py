@@ -7,7 +7,6 @@ import pkg_resources
 import pkgutil
 import sys
 import webbrowser
-from shutil import copyfile
 
 import psutil
 
