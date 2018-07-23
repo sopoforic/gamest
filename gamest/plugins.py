@@ -56,9 +56,6 @@ class GameReporterPlugin(GamestSessionPlugin):
         self.interval = self.config.getint(self.__class__.__name__, 'interval', fallback=30*60*1000)
         self.job = None
 
-        application.bind("<<GameStart{}>>".format(self.play_session.id), self.onGameStart, "+")
-        application.bind("<<GameEnd{}>>".format(self.play_session.id), self.onGameEnd, "+")
-
     def get_report(self):
         raise NotImplementedError
 
