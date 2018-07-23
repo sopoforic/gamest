@@ -559,7 +559,7 @@ class Application(Frame):
                         pass
                     except Exception:
                         logger.exception("Failed to initialize session plugin %r.", p)
-                self.event_generate("<<GameStart>>")
+                self.event_generate("<<GameStart{}>>".format(self.play_session.id))
                 logger.debug("Now running %s", self.RUNNING[1].app.name)
                 self.running_text.set("Now running: ")
                 self.running_app.set(self.RUNNING[1].app.name)
@@ -604,8 +604,10 @@ class Application(Frame):
                     Session.commit()
                     self.RUNNING = None
                     self.manual_session_button.config(state=NORMAL)
-                    self.event_generate("<<GameEnd>>")
+                    self.event_generate("<<GameEnd{}>>".format(self.play_session.id))
                     self.active_plugins = []
+                    self.unbind("<<GameStart{}>>".format(self.play_session.id))
+                    self.unbind("<<GameEnd{}>>".format(self.play_session.id))
                     root.after(50, self.run)
         except:
             logger.exception("Failure with is_running(), probably")

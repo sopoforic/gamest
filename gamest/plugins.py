@@ -2,7 +2,6 @@ import configparser
 import logging
 import os
 import pkg_resources
-import weakref
 from shutil import copyfile
 
 from . import DATA_DIR
@@ -33,31 +32,6 @@ class GamestSessionPlugin(GamestPlugin):
         super().__init__(application)
         self.play_session = application.play_session
 
-        weakstart = weakref.WeakMethod(self.onGameStart)
-        weakend = weakref.WeakMethod(self.onGameEnd)
-
-        self.start_bind = application.bind("<<GameStart>>", lambda e: weakstart()(e), "+")
-        self.end_bind = application.bind("<<GameEnd>>", lambda e: weakend()(e), "+")
-
-    def onGameStart(self, e):
-        raise NotImplementedError
-
-    def onGameEnd(self, e):
-        raise NotImplementedError
-
-    def __del__(self):
-        self.logger.debug("__del__ called on %r", self)
-        self.cleanup()
-    
-    def cleanup(self):
-        if self.start_bind:
-            self.application.unbind("<<GameStart>>", self.start_bind)
-            self.start_bind = None
-        if self.end_bind:
-            self.application.unbind("<<GameEnd>>", self.end_bind)
-            self.end_bind = None
-        self.logger.debug("Removed bindings.")
-
 class NotificationService(GamestPersistentPlugin):
     user_name = None
 
@@ -81,6 +55,9 @@ class GameReporterPlugin(GamestSessionPlugin):
 
         self.interval = self.config.getint(self.__class__.__name__, 'interval', fallback=30*60*1000)
         self.job = None
+
+        application.bind("<<GameStart{}>>".format(self.play_session.id), self.onGameStart, "+")
+        application.bind("<<GameEnd{}>>".format(self.play_session.id), self.onGameEnd, "+")
 
     def get_report(self):
         raise NotImplementedError
@@ -106,11 +83,14 @@ class GameReporterPlugin(GamestSessionPlugin):
                 self.job = self.application.after(self.interval, self.report_update)
 
     def onGameStart(self, e):
+        self.logger.debug("onGameStart called")
         self.job = self.application.after(35000, self.report_update)
 
     def onGameEnd(self, e):
         self.logger.debug("onGameEnd called")
-        if self.job:
-            self.application.after_cancel(self.job)
         self.report_update(game_end=True)
         self.cleanup()
+
+    def cleanup(self):
+        if self.job:
+            self.application.after_cancel(self.job)

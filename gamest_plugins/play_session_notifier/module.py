@@ -13,6 +13,9 @@ class PlaySessionNotificationPlugin(GamestSessionPlugin):
         self.logger.debug("Available notification services: %s",
             list(p.__class__.__name__ for p in filter(lambda p: isinstance(p, NotificationService), self.application.persistent_plugins)))
 
+        application.bind("<<GameStart{}>>".format(self.play_session.id), self.onGameStart, "+")
+        application.bind("<<GameEnd{}>>".format(self.play_session.id), self.onGameEnd, "+")
+
         self.logger.debug("Plugin initialized.\n\tsend_begin: %r", self.send_begin)
 
     def onGameStart(self, e):
@@ -31,8 +34,6 @@ class PlaySessionNotificationPlugin(GamestSessionPlugin):
     def onGameEnd(self, e):
         try:
             self.logger.debug("onGameEnd called")
-            if self.start_job:
-                self.application.after_cancel(self.start_job)
             if not self.send_end or self.play_session.duration < 30:
                 return
             for s in filter(lambda p: isinstance(p, NotificationService), self.application.persistent_plugins):
@@ -44,3 +45,7 @@ class PlaySessionNotificationPlugin(GamestSessionPlugin):
             self.logger.exception("Failure in onGameEnd.")
         finally:
             self.cleanup()
+
+    def cleanup(self):
+        if self.start_job:
+                self.application.after_cancel(self.start_job)
