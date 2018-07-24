@@ -57,6 +57,9 @@ class GameReporterPlugin(GamestSessionPlugin):
             self.logger.debug("Path did not match: %s.", self.play_session.user_app.path)
             raise UnsupportedAppError("Current app path does not match a supported path.")
 
+        self.send_begin = self.config.getboolean(self.__class__.__name__, 'send_begin', fallback=True)
+        self.send_end = self.config.getboolean(self.__class__.__name__, 'send_end', fallback=True)
+
         self.add_status_updates = self.config.getboolean(self.__class__.__name__, 'add_status_updates', fallback=True)
         self.interval = self.config.getint(self.__class__.__name__, 'interval', fallback=30*60*1000)
         self.job = None
@@ -88,11 +91,13 @@ class GameReporterPlugin(GamestSessionPlugin):
 
     def onGameStart(self, e):
         self.logger.debug("onGameStart called")
-        self.job = self.application.after(35000, self.report_update)
+        if self.send_begin:
+            self.job = self.application.after(35000, self.report_update)
 
     def onGameEnd(self, e):
         self.logger.debug("onGameEnd called")
-        self.report_update(game_end=True)
+        if self.send_end:
+            self.report_update(game_end=True)
         self.cleanup()
 
     def cleanup(self):
