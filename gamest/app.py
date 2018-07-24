@@ -592,7 +592,7 @@ class Application(Frame):
                 self.event_generate("<<GameStart{}>>".format(self.play_session.id))
                 logger.debug("Now running %s", self.RUNNING[1].app.name)
                 self.running_text.set("Now running: ")
-                self.running_app.set(self.RUNNING[1].app.name)
+                self.running_app.set("{} (#{})".format(self.RUNNING[1].app.name, self.RUNNING[1].id))
                 self.time_text.set("{}".format(format_time(self.RUNNING[1].app.runtime)))
                 self.elapsed_text.set(format_time(0))
                 self.sent = False

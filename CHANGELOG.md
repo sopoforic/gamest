@@ -6,6 +6,8 @@
 
 * GameReporter plugins now accept `send_begin` and `send_end` options to decide
     whether to send a report when the game begins or ends.
+* The main window now displays the running UserApp ID, which may be used in
+    plugin configuration.
 
 ## [1.2.0] - 2018-07-24
 
