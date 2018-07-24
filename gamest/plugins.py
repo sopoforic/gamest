@@ -16,10 +16,14 @@ class GamestPlugin:
 
         CONFIG_PATH = os.path.join(DATA_DIR, '{}.conf'.format(self.__class__.__name__))
         self.config.read([CONFIG_PATH])
+
+    @classmethod
+    def copy_sample_config(cls):
+        CONFIG_PATH = os.path.join(DATA_DIR, '{}.conf'.format(cls.__name__))
         if not os.path.exists(CONFIG_PATH):
-            PKG = self.__module__.rsplit('.', 1)[0]
-            if pkg_resources.resource_exists(PKG, '{}.conf.default'.format(self.__class__.__name__)):
-                copyfile(pkg_resources.resource_filename(PKG, '{}.conf.default'.format(self.__class__.__name__)), CONFIG_PATH)
+            PKG = cls.__module__.rsplit('.', 1)[0]
+            if pkg_resources.resource_exists(PKG, '{}.conf.default'.format(cls.__name__)):
+                copyfile(pkg_resources.resource_filename(PKG, '{}.conf.default'.format(cls.__name__)), CONFIG_PATH)
 
 class GamestPersistentPlugin(GamestPlugin):
     pass

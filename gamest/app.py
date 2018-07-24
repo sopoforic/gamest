@@ -638,6 +638,9 @@ def main():
         in pkgutil.iter_modules(gamest_plugins.__path__, gamest_plugins.__name__ + ".")
     }
 
+    for p in filter(lambda p: issubclass(p.plugin, plugins.GamestPlugin), installed_plugins.values()):
+        p.plugin.copy_sample_config()
+
     logger.debug("Plugins found: %s", list(installed_plugins.keys()))
 
     persistent_plugins = [
