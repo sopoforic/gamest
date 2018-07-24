@@ -9,6 +9,11 @@
 * The main window now displays the running UserApp ID, which may be used in
     plugin configuration.
 
+### Fixed
+
+* Saving an HTML report now prompts the user for a location, rather than placing
+    the report in the working directory.
+
 ## [1.2.0] - 2018-07-24
 
 ### Added

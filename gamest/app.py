@@ -10,14 +10,14 @@ import traceback
 import webbrowser
 from tkinter import (Tk, Frame, Toplevel, StringVar, Label, Entry, Button,
     N, S, E, W, DISABLED, NORMAL,
-    ttk, messagebox)
+    ttk, messagebox, filedialog)
 
 import psutil
 
 import gamest_plugins
 from .db import App, UserApp, PlaySession, Session
 from .util import format_time
-from . import plugins, config
+from . import plugins, config, DATA_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -531,11 +531,17 @@ class Application(Frame):
         self.createWidgets()
 
     def do_report(self):
-        html = generate_report()
-        with open('report.html', 'wb') as outfile:
-            outfile.write(html.encode('utf_8'))
-        path = 'file://' + os.path.abspath('report.html')
-        webbrowser.open(path,new=2)
+        filename = filedialog.asksaveasfilename(
+            initialdir=DATA_DIR,
+            initialfile='report.html',
+            title="Save report as...",
+            filetypes=(("HTML files","*.html"),),)
+        if filename:
+            html = generate_report()
+            with open(filename, 'wb') as outfile:
+                outfile.write(html.encode('utf_8'))
+            path = 'file://' + os.path.abspath(filename)
+            webbrowser.open(path,new=2)
 
     def createWidgets(self):
         self.grid_columnconfigure(0, weight=0)
