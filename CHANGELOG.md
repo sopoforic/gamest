@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## [1.2.1] - 2018-07-24
 
 ### Added
 
@@ -8,6 +8,7 @@
     whether to send a report when the game begins or ends.
 * The main window now displays the running UserApp ID, which may be used in
     plugin configuration.
+* GameReporter plugins can now accept multiple UserApp IDs.
 
 ### Fixed
 

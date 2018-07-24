@@ -5,7 +5,7 @@ import pkg_resources
 from shutil import copyfile
 
 from . import DATA_DIR
-from .errors import UnsupportedAppError
+from .errors import UnsupportedAppError, InvalidConfigurationError
 
 class GamestPlugin:
     def __init__(self, application):
@@ -48,12 +48,25 @@ class GameReporterPlugin(GamestSessionPlugin):
     def __init__(self, application):
         super().__init__(application)
 
-        self.user_app_id = self.config.getint(self.__class__.__name__, 'user_app_id', fallback=None)
+        self.user_app_id = self.config.get(self.__class__.__name__, 'user_app_id', fallback='')
+        try:
+            self.user_app_ids = [int(i) for i in self.user_app_id.splitlines()]
+        except ValueError:
+            self.logger.warning("Invalid UserApp ID in %s.conf: %r",
+                self.__class__.__name__,
+                self.user_app_id)
+            raise InvalidConfigurationError("Invalid UserApp ID in {}.conf: {!r}".format(
+                self.__class__.__name__,
+                self.user_app_id))
 
-        if self.user_app_id and (self.user_app_id != self.play_session.user_app_id):
-            self.logger.debug("User app ID did not match: %s != %s (configured)", self.play_session.user_app_id, self.user_app_id)
-            raise UnsupportedAppError("Current user_app_id is {}, configured user_app_id is {}.".format(self.play_session.user_app_id, self.user_app_id))
-        elif not self.user_app_id and not (self.play_session.user_app.path and any(self.play_session.user_app.path.endswith(p) for p in self.PATH_ENDSWITH)):
+        if self.user_app_ids and (self.play_session.user_app_id not in self.user_app_ids):
+            self.logger.debug("User app ID did not match: %s not in %s (configured)",
+                self.play_session.user_app_id,
+                ', '.join(str(i) for i in self.user_app_ids))
+            raise UnsupportedAppError("Current user_app_id: {}. Configured: {}.".format(
+                self.play_session.user_app_id,
+                ', '.join(str(i) for i in self.user_app_ids)))
+        elif not self.user_app_ids and not (self.play_session.user_app.path and any(self.play_session.user_app.path.endswith(p) for p in self.PATH_ENDSWITH)):
             self.logger.debug("Path did not match: %s.", self.play_session.user_app.path)
             raise UnsupportedAppError("Current app path does not match a supported path.")
 
