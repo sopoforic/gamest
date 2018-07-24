@@ -6,7 +6,11 @@ import os
 import pkg_resources
 import pkgutil
 import sys
+import traceback
 import webbrowser
+from tkinter import (Tk, Frame, Toplevel, StringVar, Label, Entry, Button,
+    N, S, E, W, DISABLED, NORMAL,
+    ttk, messagebox)
 
 import psutil
 
@@ -17,6 +21,15 @@ from . import plugins, config
 
 logger = logging.getLogger(__name__)
 
+def excepthook(excType=None, excValue=None, tracebackobj=None):
+    logger.critical(''.join(traceback.format_exception(
+        etype=excType,
+        value=excValue,
+        tb=tracebackobj,
+    )).strip())
+
+sys.excepthook = excepthook
+
 class FakeProcess:
     def __init__(self):
         self.running = True
@@ -25,6 +38,7 @@ class FakeProcess:
         return self.running
 
 def identify_window(pid, text):
+    """Identify the app associated with a window."""
     proc = None
     path = None
     uas = Session.query(UserApp).filter(UserApp.window_text == text)
@@ -97,7 +111,7 @@ def foreach_window(hwnd, lParam):
         return True
 
 def generate_report():
-    apps = list(Session.query(App).filter(App.user_app.any(UserApp.play_sessions.any())).order_by(App.name).all())
+    apps = list(Session.query(App).filter(App.user_apps.any(UserApp.play_sessions.any())).order_by(App.name).all())
     html = (
 """
 <!DOCTYPE html>
@@ -106,6 +120,16 @@ def generate_report():
   <style type="text/css">
     td {{
       padding: 0 15px 0 15px;
+      vertical-align: top;
+    }}
+    td pre {{
+      margin: 0;
+    }}
+    table.details > tbody > tr:nth-child(even) {{
+      background: #FFF;
+    }}
+    table.details > tbody > tr:nth-child(odd) {{
+      background: #FAFAFF;
     }}
   </style>
 </head>
@@ -143,7 +167,7 @@ def generate_report():
 
     for a in apps:
         details += "<h2 id=\"{}\">{}</h2>\n".format(a.id, a.name)
-        details += "<table>\n"
+        details += "<table class=\"details\">\n"
         details += "  <thead>\n"
         details += "    <tr>\n"
         details += "      <th>Started</th>\n"
@@ -152,7 +176,7 @@ def generate_report():
         details += "    </tr>\n"
         details += "  </thead>\n"
         details += "  <tbody>\n"
-        for u in a.user_app:
+        for u in a.user_apps:
             if u.initial_runtime:
                 details += "    <tr>\n"
                 details += "      <td>Initial runtime</td>\n"
@@ -163,16 +187,23 @@ def generate_report():
                 details += "    <tr>\n"
                 details += "      <td>{}</td>\n".format(s.started.strftime('%Y-%m-%d %H:%M:%S'))
                 details += "      <td>{}</td>\n".format(format_time(s.duration))
-                details += "      <td>{}</td>\n".format(s.note if s.note else '')
+                note = s.note if s.note else ''
+                if note and s.status_updates:
+                    note += '<br><br>'
+                if s.status_updates:
+                    note += "        <table>\n"
+                    note += "          <thead><tr><th>Timestamp</th><th>Update</th></tr></thead>\n"
+                    note += "          <tbody>\n"
+                    for update in s.status_updates:
+                        note += "            <tr><td>{}</td><td><pre>{}</pre></td></tr>\n".format(
+                            update.timestamp.strftime('%Y-%m-%d %H:%M:%S'), update.note)
+                    note += "          </tbody></table>\n"
+                details += "      <td>{}</td>\n".format(note)
                 details += "    </tr>\n"
         details += "  </tbody>\n"
         details += "</table>\n"
 
     return html.format(summary, details)
-
-from tkinter import *
-from tkinter import ttk
-from tkinter import messagebox
 
 class AddBox(Frame):
     def __init__(self, parent, game='', path='', title='', seconds='', notes=''):
@@ -245,7 +276,7 @@ class AddBox(Frame):
             # reset the seen items so the new app can be detected
             global seen
             seen = set()
-        except:
+        except Exception:
             Session.rollback()
         finally:
             self.destroy()
@@ -297,7 +328,7 @@ class AddTimeBox(Frame):
             Session.add(ua)
             Session.commit()
             logger.info("Added manual time for userapp: %s", repr(ua))
-        except:
+        except Exception:
             logger.exception("Failed to add manual time. UserApp: %r", ua)
             Session.rollback()
         finally:
@@ -383,7 +414,7 @@ class ManualSession(Frame):
 
         Label(win, text="A session of {} is in progress.".format(self.ua.app)).grid()
         Button(win, text="End Session", command=self.end_session).grid(row=1)
-    
+
     def end_session(self):
         self.proc.running = False
         self.destroy()

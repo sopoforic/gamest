@@ -51,12 +51,13 @@ class GameReporterPlugin(GamestSessionPlugin):
         self.user_app_id = self.config.getint(self.__class__.__name__, 'user_app_id', fallback=None)
 
         if self.user_app_id and (self.user_app_id != self.play_session.user_app_id):
-            self.logger.debug("User app ID did not match: {} !+ {} (configured)".format(self.play_session.user_app_id, self.user_app_id))
-            raise UnsupportedAppError("Current user_app_id is %s, configured user_app_id is %s.", self.play_session.user_app_id, self.user_app_id)
+            self.logger.debug("User app ID did not match: %s != %s (configured)", self.play_session.user_app_id, self.user_app_id)
+            raise UnsupportedAppError("Current user_app_id is {}, configured user_app_id is {}.".format(self.play_session.user_app_id, self.user_app_id))
         elif not self.user_app_id and not (self.play_session.user_app.path and any(self.play_session.user_app.path.endswith(p) for p in self.PATH_ENDSWITH)):
-            self.logger.debug("Path did not match: {}.".format(self.play_session.user_app.path))
+            self.logger.debug("Path did not match: %s.", self.play_session.user_app.path)
             raise UnsupportedAppError("Current app path does not match a supported path.")
 
+        self.add_status_updates = self.config.getboolean(self.__class__.__name__, 'add_status_updates', fallback=True)
         self.interval = self.config.getint(self.__class__.__name__, 'interval', fallback=30*60*1000)
         self.job = None
 
@@ -72,12 +73,14 @@ class GameReporterPlugin(GamestSessionPlugin):
         try:
             report_details = self.get_report()
             if report_details:
+                if self.add_status_updates:
+                    self.play_session.add_status_update(report_details)
                 report_text = report_text + report_details
                 for s in filter(lambda p: isinstance(p, NotificationService), self.application.persistent_plugins):
                     s.notify(report_text)
             else:
                 self.logger.debug("No difference since report.")
-        except:
+        except Exception:
             self.logger.exception("Failed to build update.")
         finally:
             if self.application.RUNNING and self.play_session is self.application.play_session:

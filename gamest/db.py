@@ -1,9 +1,8 @@
 import os
-import sys
 
-from sqlalchemy import Table, Column, ForeignKey, Integer, Text, Boolean, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, Text, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref
+from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref, object_session
 from sqlalchemy import create_engine
 from sqlalchemy.sql import func
 
@@ -11,9 +10,9 @@ from . import DATA_DIR
 
 Base = declarative_base()
 
-dbpath = os.path.join(DATA_DIR, 'gamest.db')
+DBPATH = os.path.join(DATA_DIR, 'gamest.db')
 
-engine = create_engine(r'sqlite:///{}'.format(dbpath))
+engine = create_engine(r'sqlite:///{}'.format(DBPATH))
 Session = scoped_session(sessionmaker(bind=engine))
 
 class App(Base):
@@ -37,14 +36,14 @@ class App(Base):
 
     @property
     def runtime(self):
-        return sum(u.runtime for u in self.user_app)
+        return sum(u.runtime for u in self.user_apps)
 
 class UserApp(Base):
     __tablename__ = 'user_app'
     id = Column(Integer, primary_key=True)
 
     app_id = Column(Integer, ForeignKey('app.id'), nullable=False, index=True)
-    app = relationship('App', backref='user_app')
+    app = relationship('App', backref='user_apps')
 
     note = Column(Text)
     path = Column(Text, index=True)
@@ -53,7 +52,8 @@ class UserApp(Base):
 
     @property
     def runtime(self):
-        added = Session.query(func.sum(PlaySession.duration)).filter(PlaySession.user_app == self).scalar()
+        added = Session.query(func.sum(PlaySession.duration)).filter(
+            PlaySession.user_app == self).scalar()
         if not added:
             added = 0
         return self.initial_runtime + added
@@ -70,7 +70,9 @@ class PlaySession(Base):
     id = Column(Integer, primary_key=True)
 
     user_app_id = Column(Integer, ForeignKey('user_app.id'), nullable=False, index=True)
-    user_app = relationship('UserApp', backref='play_sessions', order_by='PlaySession.started')
+    user_app = relationship(
+        'UserApp',
+        backref=backref('play_sessions', order_by='PlaySession.started.asc()'))
 
     started = Column(DateTime, nullable=False, default=func.now(), index=True)
     duration = Column(Integer, nullable=False, default=0)
@@ -83,5 +85,27 @@ class PlaySession(Base):
     @property
     def app(self):
         return self.user_app.app
+
+    def add_status_update(self, note):
+        object_session(self).add(StatusUpdate(play_session=self, note=note))
+
+class StatusUpdate(Base):
+    __tablename__ = 'status_update'
+    id = Column(Integer, primary_key=True)
+
+    play_session_id = Column(Integer, ForeignKey('play_session.id'), nullable=False, index=True)
+    timestamp = Column(DateTime, nullable=False, default=func.now(), index=True)
+    note = Column(Text)
+
+    play_session = relationship(
+        'PlaySession',
+        backref=backref('status_updates', order_by='StatusUpdate.timestamp.asc()'))
+
+    def __repr__(self):
+        return "StatusUpdate(id={}, play_session_id={}, timestamp={!r})".format(
+            self.id, self.play_session_id, self.timestamp)
+
+    def __str__(self):
+        return self.note
 
 Base.metadata.create_all(engine)
