@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+* Now settings can be stored in the database.
+
 ### Fixed
 
 * The default interval for GameReporter plugins has been corrected to one hour

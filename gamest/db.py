@@ -1,12 +1,15 @@
+import logging
 import os
 
-from sqlalchemy import Column, ForeignKey, Integer, Text, Boolean, DateTime
+from sqlalchemy import Column, Index, ForeignKey, Integer, Text, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref, object_session
 from sqlalchemy import create_engine
 from sqlalchemy.sql import func
 
 from . import DATA_DIR
+
+logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
@@ -107,5 +110,71 @@ class StatusUpdate(Base):
 
     def __str__(self):
         return self.note
+
+class Settings(Base):
+    __tablename__ = 'settings'
+    __table_args__ = (
+        Index('settings_owner_key_idx', 'owner', 'key'),
+    )
+    id = Column(Integer, primary_key=True)
+
+    owner = Column(Text, nullable=False)
+    key = Column(Text, nullable=False)
+    value = Column(Text, nullable=False)
+
+    def __repr__(self):
+        return "Settings(id={}, owner={!r}, key={!r}, value={!r})".format(
+            self.id, self.owner, self.key, self.value)
+
+def get_settings(owner, key, type=lambda x: x):
+    x = Session.query(Settings.value).\
+        filter(
+            Settings.owner == owner,
+            Settings.key == key).\
+        order_by(Settings.id.asc()).\
+        limit(1).\
+        scalar()
+    if x is None:
+        return None
+    try:
+        return type(x)
+    except:
+        return None
+
+def get_settings_list(owner, key, type=lambda x: x):
+    q = Session.query(Settings.value).\
+        filter(
+            Settings.owner == owner,
+            Settings.key == key).\
+        order_by(Settings.id.asc())
+    for x in q:
+        try:
+            yield type(x[0])
+        except:
+            continue
+
+def set_settings(owner, key, value, append=False):
+    logger.debug("Setting %s.%s to %r (append=%r)", owner, key, value, append)
+    settings = Session.query(Settings).\
+        filter(
+            Settings.owner == owner,
+            Settings.key == key)
+    if not append and settings.count() > 1:
+        raise ValueError("Cannot replace settings list.")
+    if append:
+        Session.add(Settings(owner=owner, key=key, value=value))
+    else:
+        settings = settings.first()
+        if settings:
+            settings.value = value
+        else:
+            Session.add(Settings(owner=owner, key=key, value=value))
+
+def delete_settings(owner, key):
+    Session.query(Settings).\
+        filter(
+            Settings.owner == owner,
+            Settings.key == key).\
+        delete()
 
 Base.metadata.create_all(engine)
