@@ -74,7 +74,7 @@ class GameReporterPlugin(GamestSessionPlugin):
         self.send_end = self.config.getboolean(self.__class__.__name__, 'send_end', fallback=True)
 
         self.add_status_updates = self.config.getboolean(self.__class__.__name__, 'add_status_updates', fallback=True)
-        self.interval = self.config.getint(self.__class__.__name__, 'interval', fallback=30*60*1000)
+        self.interval = self.config.getint(self.__class__.__name__, 'interval', fallback=60*60*1000)
         self.job = None
 
     def get_report(self):

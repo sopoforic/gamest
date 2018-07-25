@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+* The default interval for GameReporter plugins has been corrected to one hour
+    from thirty minutes.
+
 ## [1.2.1] - 2018-07-24
 
 ### Added
