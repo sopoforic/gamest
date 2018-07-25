@@ -5,6 +5,7 @@
 ### Added
 
 * Now settings can be stored in the database.
+* Now the windows will remember their positions.
 
 ### Fixed
 

@@ -15,7 +15,7 @@ from tkinter import (Tk, Frame, Toplevel, StringVar, Label, Entry, Button,
 import psutil
 
 import gamest_plugins
-from .db import App, UserApp, PlaySession, Session
+from .db import App, UserApp, PlaySession, Session, set_settings, get_settings, get_settings_list
 from .util import format_time
 from . import plugins, config, DATA_DIR
 
@@ -226,7 +226,8 @@ class AddBox(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        win.geometry('400x160')
+        geometry = get_settings(self.__class__.__name__, 'geometry') or '400x160'
+        win.geometry(geometry)
         win.grid_columnconfigure(0, weight=0)
         win.grid_columnconfigure(1, weight=1)
         win.title("Add Game")
@@ -252,6 +253,12 @@ class AddBox(Frame):
         Entry(win, textvariable=self.notes_entry).grid(row=4, column=1, sticky=E+W)
 
         Button(win, text="Add Game", command=self.add_game).grid(row=5, columnspan=2)
+
+        win.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.destroy()
 
     def add_game(self):
         try:
@@ -279,7 +286,7 @@ class AddBox(Frame):
         except Exception:
             Session.rollback()
         finally:
-            self.destroy()
+            self.on_closing()
 
 class AddTimeBox(Frame):
     def __init__(self, parent):
@@ -293,7 +300,9 @@ class AddTimeBox(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        win.geometry('400x120')
+        geometry = get_settings(self.__class__.__name__, 'geometry') or '400x120'
+        win.geometry(geometry)
+        win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.grid_columnconfigure(0, weight=0)
         win.grid_columnconfigure(1, weight=1)
         win.title("Add Time")
@@ -308,6 +317,10 @@ class AddTimeBox(Frame):
         Entry(win, textvariable=self.seconds_entry).grid(row=1, column=1, sticky=E+W)
 
         Button(win, text="Add Time", command=self.add_time).grid(row=2, columnspan=2)
+
+    def on_closing(self):
+        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.destroy()
 
     def add_time(self):
         try:
@@ -332,7 +345,7 @@ class AddTimeBox(Frame):
             logger.exception("Failed to add manual time. UserApp: %r", ua)
             Session.rollback()
         finally:
-            self.destroy()
+            self.on_closing()
 
 class ManualSessionSelector(Frame):
     def __init__(self, parent, game='', path='', title='', seconds='', notes=''):
@@ -349,7 +362,9 @@ class ManualSessionSelector(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        win.geometry('400x80')
+        geometry = get_settings(self.__class__.__name__, 'geometry') or '400x80'
+        win.geometry(geometry)
+        win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.grid_columnconfigure(0, weight=0)
         win.grid_columnconfigure(1, weight=1)
         win.title("Start Manual Session")
@@ -363,6 +378,10 @@ class ManualSessionSelector(Frame):
         self.gamecombo.grid(row=0, column=1, sticky=E+W)
 
         Button(win, text="Begin Session", command=self.begin_session).grid(row=5, columnspan=2)
+
+    def on_closing(self):
+        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.destroy()
 
     def begin_session(self):
         try:
@@ -395,7 +414,7 @@ class ManualSessionSelector(Frame):
             logger.exception("Exception in begin_session.")
             Session.rollback()
         finally:
-            self.destroy()
+            self.on_closing()
 
 class ManualSession(Frame):
     def __init__(self, parent, ua):
@@ -411,13 +430,15 @@ class ManualSession(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        win.geometry('400x80')
+        geometry = get_settings(self.__class__.__name__, 'geometry') or '400x80'
+        win.geometry(geometry)
         win.title("Manual Session")
 
         Label(win, text="A session of {} is in progress.".format(self.ua.app)).grid()
         Button(win, text="End Session", command=self.end_session).grid(row=1)
 
     def end_session(self):
+        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
         self.proc.running = False
         self.destroy()
 
@@ -453,7 +474,9 @@ class PickGame(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        win.geometry('600x80')
+        geometry = get_settings(self.__class__.__name__, 'geometry') or '400x80'
+        win.geometry(geometry)
+        win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.grid_columnconfigure(0, weight=0)
         win.grid_columnconfigure(1, weight=1)
         win.title("Pick a Game")
@@ -468,13 +491,17 @@ class PickGame(Frame):
 
         Button(win, text="Pick Game", command=self.do_pickgame).grid(row=1, columnspan=2)
 
+    def on_closing(self):
+        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.destroy()
+
     def do_pickgame(self):
         index = self.pickgamecombo.current()
         game = self.pick_games_list[index][0]
         title = self.pick_games_list[index][0]
         path = self.pick_games_list[index][1]
         AddBox(self.parent, game=game, title=title, path=path)
-        self.destroy()
+        self.on_closing()
 
 class SessionNote(Frame):
     def __init__(self, parent, session):
@@ -487,8 +514,9 @@ class SessionNote(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        win.geometry('600x400')
-        # win.grid_columnconfigure(0, weight=1)
+        geometry = get_settings(self.__class__.__name__, 'geometry') or '600x400'
+        win.geometry(geometry)
+        win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.title("Add note to play session")
 
         Label(win, text="{}, {}".format(self.session.user_app, self.session.started.strftime('%Y-%m-%d %H:%M:%S'))).pack()
@@ -500,6 +528,10 @@ class SessionNote(Frame):
 
         Button(win, text="Edit Note", command=self.edit_note).pack()
 
+    def on_closing(self):
+        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.destroy()
+
     def edit_note(self):
         try:
             Session.add(self.session)
@@ -508,7 +540,7 @@ class SessionNote(Frame):
         except Exception:
             logger.exception("Exception in edit_note")
         finally:
-            self.destroy()
+            self.on_closing()
 
 class Application(Frame):
     def __init__(self, master=None, persistent_plugins=None, session_plugins=None):
@@ -668,7 +700,8 @@ def main():
     global appli
     root = Tk()
     root.wm_title("Gamest")
-    root.geometry('400x150')
+    geometry = get_settings('Application', 'geometry') or '400x150'
+    root.geometry(geometry)
 
     installed_plugins = {
         name: importlib.import_module(name)
@@ -702,8 +735,8 @@ def main():
 
     def on_closing():
         if messagebox.askokcancel("Quit", "Do you want to quit?"):
-            logger.debug("Committing and quitting.")
             if appli.RUNNING is not None:
+                logger.debug("appli.RUNNING is not None")
                 try:
                     if appli.RUNNING[0].is_running():
                         elapsed = int((datetime.datetime.now() - appli.started).total_seconds())
@@ -711,6 +744,9 @@ def main():
                         Session.commit()
                 except:
                     logger.exception("Failed is_running check on shutdown")
+            set_settings('Application', 'geometry', root.winfo_geometry())
+            logger.debug("Committing and quitting.")
+            Session.commit()
             root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
