@@ -7,6 +7,10 @@
 * The default interval for GameReporter plugins has been corrected to one hour
     from thirty minutes.
 
+### Changed
+
+* Commit sessions no matter how long they are.
+
 ## [1.2.1] - 2018-07-24
 
 ### Added

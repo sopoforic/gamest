@@ -612,16 +612,15 @@ class Application(Frame):
             root.after(5000, self.run)
         finally:
             root.update()
+            Session.commit()
 
     def wait(self):
         try:
             if self.RUNNING[0].is_running():
                 try:
                     elapsed = int((datetime.datetime.now() - self.started).total_seconds())
-                    if elapsed > 5:
-                        self.play_session.duration = elapsed
-                        Session.commit()
-                        self.note_button.config(state=NORMAL)
+                    self.play_session.duration = elapsed
+                    self.note_button.config(state=NORMAL)
                     self.time_text.set(format_time(self.RUNNING[1].app.runtime))
                     self.elapsed_text.set(format_time(elapsed))
                 except:
@@ -706,11 +705,8 @@ def main():
                 try:
                     if appli.RUNNING[0].is_running():
                         elapsed = int((datetime.datetime.now() - appli.started).total_seconds())
-                        if elapsed > 60:
-                            appli.play_session.duration = elapsed
-                            Session.commit()
-                        else:
-                            Session.rollback()
+                        appli.play_session.duration = elapsed
+                        Session.commit()
                 except:
                     logger.exception("Failed is_running check on shutdown")
             root.destroy()
