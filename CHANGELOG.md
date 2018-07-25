@@ -6,6 +6,7 @@
 
 * The default interval for GameReporter plugins has been corrected to one hour
     from thirty minutes.
+* Closing the manual session window now correctly ends the session.
 
 ### Changed
 

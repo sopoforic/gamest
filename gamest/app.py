@@ -406,6 +406,8 @@ class ManualSession(Frame):
         appli.RUNNING = (self.proc, self.ua)
         self.createWidgets()
 
+        self.win.protocol("WM_DELETE_WINDOW", self.end_session)
+
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
