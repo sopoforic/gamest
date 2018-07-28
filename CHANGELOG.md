@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.4] - 2018-07-28
+
+### Fixed
+
+* Beginning manual sessions of games that have previous manual sessions now
+    works as expected.
+
 ## [1.2.3] - 2018-07-28
 
 ### Changed

@@ -419,7 +419,7 @@ class ManualSessionSelector(Frame):
                         ua = UserApp(app=app, path=None, window_text=None, note=None)
                         logger.info("Added new userapp: %s", repr(ua))
                         Session.add(ua)
-                        ManualSession(self.parent, ua)
+                    ManualSession(self.parent, ua)
             else:
                 messagebox.showerror(
                     "Gaming session in progress",
@@ -632,6 +632,7 @@ class Application(Frame):
                 self.manual_session_button.config(state=DISABLED)
                 self.rtlabel.config(fg='green')
                 self.started = datetime.datetime.now()
+                self.RUNNING = (self.RUNNING[0], Session.merge(self.RUNNING[1]))
                 self.play_session = PlaySession(user_app=self.RUNNING[1], started=self.started)
                 Session.add(self.play_session)
                 Session.flush()
