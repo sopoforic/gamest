@@ -205,6 +205,26 @@ def generate_report():
 
     return html.format(summary, details)
 
+class SearchableCombobox(ttk.Combobox):
+    def __init__(self, parent, values):
+        super().__init__(parent, values=values, state="readonly")
+        self.values = values
+        self.bind("<Key>", self.handle_keypress)
+        self.focus_set()
+
+    def handle_keypress(self, event):
+        if event.char.isprintable():
+            start = self.current() + 1 if self.current != -1 else 0
+            for index, game in enumerate(self.values[start:]):
+                if game.upper().startswith(event.char.upper()):
+                    self.current(index+start)
+                    return
+            else:
+                for index, game in enumerate(self.values):
+                    if game.upper().startswith(event.char.upper()):
+                        self.current(index)
+                        return
+
 class AddBox(Frame):
     def __init__(self, parent, game='', path='', title='', seconds='', notes=''):
         Frame.__init__(self, parent)
@@ -308,7 +328,7 @@ class AddTimeBox(Frame):
         win.title("Add Time")
 
         self.games = [(g.id, g.name) for g in Session.query(App).order_by(App.name)]
-        self.gamecombo = ttk.Combobox(win, values=[g[1] for g in self.games], state="readonly")
+        self.gamecombo = SearchableCombobox(win, values=[g[1] for g in self.games])
 
         Label(win, text="Game: ").grid()
         self.gamecombo.grid(row=0, column=1, sticky=E+W)
@@ -326,21 +346,26 @@ class AddTimeBox(Frame):
         try:
             ua = UserApp()
             index = self.gamecombo.current()
-            app = Session.query(App).get(self.games[index][0])
+            if index == -1:
+                    messagebox.showerror(
+                        "No game selected",
+                        "A game must be selected.")
+            else:
+                app = Session.query(App).get(self.games[index][0])
 
-            ua = Session.query(UserApp).filter(
-                UserApp.app == app,
-                UserApp.path == None,
-                UserApp.window_text == None).first()
-            if not ua:
-                ua = UserApp(app=app, path=None, window_text=None, note=None, initial_runtime=0)
+                ua = Session.query(UserApp).filter(
+                    UserApp.app == app,
+                    UserApp.path == None,
+                    UserApp.window_text == None).first()
+                if not ua:
+                    ua = UserApp(app=app, path=None, window_text=None, note=None, initial_runtime=0)
 
-            seconds = self.seconds_entry.get()
-            ua.initial_runtime += int(seconds) if seconds else 0
+                seconds = self.seconds_entry.get()
+                ua.initial_runtime += int(seconds) if seconds else 0
 
-            Session.add(ua)
-            Session.commit()
-            logger.info("Added manual time for userapp: %s", repr(ua))
+                Session.add(ua)
+                Session.commit()
+                logger.info("Added manual time for userapp: %s", repr(ua))
         except Exception:
             logger.exception("Failed to add manual time. UserApp: %r", ua)
             Session.rollback()
@@ -348,14 +373,9 @@ class AddTimeBox(Frame):
             self.on_closing()
 
 class ManualSessionSelector(Frame):
-    def __init__(self, parent, game='', path='', title='', seconds='', notes=''):
+    def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
-
-        self.game = game
-
-        self.title_entry = StringVar()
-        self.title_entry.set(title)
 
         self.createWidgets()
 
@@ -370,9 +390,7 @@ class ManualSessionSelector(Frame):
         win.title("Start Manual Session")
 
         self.games = [(g.id, g.name) for g in Session.query(App).order_by(App.name)]
-        self.gamecombo = ttk.Combobox(win, values=[g[1] for g in self.games])
-        if self.game:
-            self.gamecombo.set(self.game)
+        self.gamecombo = SearchableCombobox(win, values=[g[1] for g in self.games])
 
         Label(win, text="Game: ").grid()
         self.gamecombo.grid(row=0, column=1, sticky=E+W)
@@ -388,11 +406,9 @@ class ManualSessionSelector(Frame):
             if not self.parent.RUNNING:
                 index = self.gamecombo.current()
                 if index == -1:
-                    app = App(name=self.gamecombo.get())
-                    ua = UserApp(app=app, path=None, window_text=None, note=None)
-                    logger.info("Adding new app: %s", app.name)
-                    logger.info("Added new userapp: %s", repr(ua))
-                    Session.add(ua)
+                    messagebox.showerror(
+                        "No game selected",
+                        "A game must be selected.")
                 else:
                     app = Session.query(App).get(self.games[index][0])
                     ua = Session.query(UserApp).filter(
@@ -403,9 +419,7 @@ class ManualSessionSelector(Frame):
                         ua = UserApp(app=app, path=None, window_text=None, note=None)
                         logger.info("Added new userapp: %s", repr(ua))
                         Session.add(ua)
-
-                Session.commit()
-                ManualSession(self.parent, ua)
+                        ManualSession(self.parent, ua)
             else:
                 messagebox.showerror(
                     "Gaming session in progress",

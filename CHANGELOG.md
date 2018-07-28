@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.3] - 2018-07-28
+
+### Changed
+
+* Now a game can be selected in the "Add Time" and "Begin Manual Session"
+    windows using the keyboard.
+
 ## [1.2.2] - 2018-07-25
 
 ### Added
