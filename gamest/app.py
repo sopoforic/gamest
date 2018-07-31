@@ -694,7 +694,7 @@ class Application(Frame):
         Frame.__init__(self, master)
         self.RUNNING = None
         self.play_session = None
-        self.config = config
+        self.config = DBConfig(owner='Application')
 
         self.installed_plugins = installed_plugins
 
