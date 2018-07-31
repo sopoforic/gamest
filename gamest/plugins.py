@@ -1,7 +1,4 @@
-import configparser
 import logging
-import os
-import pkg_resources
 from collections import OrderedDict
 from shutil import copyfile
 

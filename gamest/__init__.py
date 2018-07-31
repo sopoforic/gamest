@@ -1,4 +1,3 @@
-import configparser
 import logging
 import os
 import pkg_resources
@@ -12,16 +11,6 @@ LOG_DIR = appdirs.user_log_dir('gamest', False)
 
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
-
-config = configparser.ConfigParser(delimiters=('=',))
-config.optionxform = lambda o: o
-config.read_dict({ 'options' : { 'visible_only' : 'True',
-                                      'debug' : 'False' } })
-
-CONFIG_PATH = os.path.join(DATA_DIR, 'gamest.conf')
-config.read([CONFIG_PATH])
-if not os.path.exists(CONFIG_PATH):
-    copyfile(pkg_resources.resource_filename('gamest', 'gamest.conf.default'), CONFIG_PATH)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO,

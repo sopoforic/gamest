@@ -156,7 +156,7 @@ class DBConfig:
     get = static_get
 
     def instance_get(self, key, *, type=lambda x: x, fallback='NO FALLBACK'):
-        return self.static_get(self.owner, key, type, fallback)
+        return self.static_get(self.owner, key, type=type, fallback=fallback)
 
     @staticmethod
     def static_getlist(owner, key, *, type=lambda x: x):
@@ -174,7 +174,7 @@ class DBConfig:
     getlist = static_getlist
 
     def instance_getlist(self, key, *, type=lambda x: x):
-        for x in self.static_getlist(self.owner, key, type):
+        for x in self.static_getlist(self.owner, key, type=type):
             yield x
 
     @staticmethod
@@ -201,7 +201,7 @@ class DBConfig:
     getboolean = static_getboolean
 
     def instance_getboolean(self, key, *, fallback='NO FALLBACK'):
-        return self.static_getboolean(self.owner, key, fallback)
+        return self.static_getboolean(self.owner, key, fallback=fallback)
 
     @staticmethod
     def static_set(owner, key, value, append=False):
