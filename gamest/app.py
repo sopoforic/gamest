@@ -617,10 +617,14 @@ class SettingsTab(Frame):
         for key in self.new_values:
             if self.settings_template[key].get('validate'):
                 try:
-                    self.settings_template[key].get('validate')(self.new_values[key]())
+                    if self.settings_template[key].get('validate')(self.new_values[key]()) is False:
+                        valid = False
+                        messagebox.showerror(
+                            "Error in {}".format(self.settings_template[key]['name']),
+                            "Invalid value for {}".format(self.settings_template[key]['name']))
                 except ValueError as e:
                     valid = False
-                    messagebox.showerror("Error in {}".format(key), str(e))
+                    messagebox.showerror("Error in {}".format(self.settings_template[key]['name']), str(e))
         return valid
 
     def save_settings(self):
@@ -679,14 +683,19 @@ class SettingsBox(Frame):
         try:
             valid = True
             for t in self.nb.tabs():
-                self.nametowidget(t).validate_settings()
+                valid = self.nametowidget(t).validate_settings()
             if valid:
                 for t in self.nb.tabs():
                     self.nametowidget(t).save_settings()
+                self.parent.event_generate("<<SettingsUpdated>>")
                 self.on_closing()
         except Exception as e:
             logger.exception("Failed to save settings.")
-            messagebox.showerror("Failed to save settings", str(e))
+            messagebox.showerror(
+                "Failed to save settings",
+                ("Failed to save settings: {}\n"
+                 "\n"
+                 "More information may be available in the log.").format(str(e)))
             self.on_closing()
 
 class Application(Frame):
@@ -723,6 +732,16 @@ class Application(Frame):
         master.grid_columnconfigure(0, weight=1)
 
         self.createWidgets()
+
+        def update_log_level(e):
+            if self.config.getboolean('debug', fallback=False):
+                logging.getLogger().setLevel(logging.DEBUG)
+                logger.info("Log level set to DEBUG")
+            else:
+                logging.getLogger().setLevel(logging.INFO)
+                logger.info("Log level set to INFO")
+
+        self.bind("<<SettingsUpdated>>", update_log_level, "+")
 
     settings_template = OrderedDict()
     settings_template[('Application', 'confirm_exit')] = {
