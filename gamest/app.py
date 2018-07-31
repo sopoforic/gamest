@@ -624,7 +624,9 @@ class SettingsTab(Frame):
                             "Invalid value for {}".format(self.settings_template[key]['name']))
                 except ValueError as e:
                     valid = False
-                    messagebox.showerror("Error in {}".format(self.settings_template[key]['name']), str(e))
+                    messagebox.showerror(
+                        "Error in {}".format(self.settings_template[key]['name']),
+                        "Error in {}: {}".format(key[0], str(e)))
         return valid
 
     def save_settings(self):
@@ -683,7 +685,8 @@ class SettingsBox(Frame):
         try:
             valid = True
             for t in self.nb.tabs():
-                valid = self.nametowidget(t).validate_settings()
+                if not self.nametowidget(t).validate_settings():
+                    valid = False
             if valid:
                 for t in self.nb.tabs():
                     self.nametowidget(t).save_settings()
