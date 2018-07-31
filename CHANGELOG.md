@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.0] - 2018-07-30
+
+### Added
+
+* Plugins settings may now be configured in-app by clicking the 'Settings'
+    button.
+
 ## [1.2.4] - 2018-07-28
 
 ### Fixed
@@ -115,7 +122,10 @@
 * The gamest_plugins namespace package should work properly, now.
 * Restarting as administrator should work correctly, now.
 
-[Unreleased]: https://github.com/sopoforic/gamest/compare/v1.2.2...HEAD
+[Unreleased]: https://github.com/sopoforic/gamest/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/sopoforic/gamest/compare/v1.2.4...v2.0.0
+[1.2.4]: https://github.com/sopoforic/gamest/compare/v1.2.3...v1.2.4
+[1.2.3]: https://github.com/sopoforic/gamest/compare/v1.2.2...v1.2.3
 [1.2.2]: https://github.com/sopoforic/gamest/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/sopoforic/gamest/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/sopoforic/gamest/compare/v1.1.0...v1.2.0

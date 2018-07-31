@@ -126,55 +126,115 @@ class Settings(Base):
         return "Settings(id={}, owner={!r}, key={!r}, value={!r})".format(
             self.id, self.owner, self.key, self.value)
 
-def get_settings(owner, key, type=lambda x: x):
-    x = Session.query(Settings.value).\
-        filter(
-            Settings.owner == owner,
-            Settings.key == key).\
-        order_by(Settings.id.asc()).\
-        limit(1).\
-        scalar()
-    if x is None:
-        return None
-    try:
-        return type(x)
-    except:
-        return None
-
-def get_settings_list(owner, key, type=lambda x: x):
-    q = Session.query(Settings.value).\
-        filter(
-            Settings.owner == owner,
-            Settings.key == key).\
-        order_by(Settings.id.asc())
-    for x in q:
-        try:
-            yield type(x[0])
-        except:
-            continue
-
-def set_settings(owner, key, value, append=False):
-    logger.debug("Setting %s.%s to %r (append=%r)", owner, key, value, append)
-    settings = Session.query(Settings).\
-        filter(
-            Settings.owner == owner,
-            Settings.key == key)
-    if not append and settings.count() > 1:
-        raise ValueError("Cannot replace settings list.")
-    if append:
-        Session.add(Settings(owner=owner, key=key, value=value))
-    else:
-        settings = settings.first()
-        if settings:
-            settings.value = value
-        else:
-            Session.add(Settings(owner=owner, key=key, value=value))
-
-def delete_settings(owner, key):
-    Session.query(Settings).\
-        filter(
-            Settings.owner == owner,
-            Settings.key == key).\
-        delete()
-
 Base.metadata.create_all(engine)
+
+class DBConfig:
+    def __init__(self, owner):
+        self.owner = owner
+        self.get = self.instance_get
+        self.getlist = self.instance_getlist
+        self.getboolean = self.instance_getboolean
+        self.set = self.instance_set
+        self.delete = self.instance_delete
+
+    @staticmethod
+    def static_get(owner, key, *, type=lambda x: x, fallback='NO FALLBACK'):
+        x = Session.query(Settings.value).\
+            filter(
+                Settings.owner == owner,
+                Settings.key == key).\
+            order_by(Settings.id.asc()).\
+            limit(1).\
+            scalar()
+        if x is None:
+            if fallback == 'NO FALLBACK':
+                raise KeyError
+            else:
+                return fallback
+        return type(x)
+
+    get = static_get
+
+    def instance_get(self, key, *, type=lambda x: x, fallback='NO FALLBACK'):
+        return self.static_get(self.owner, key, type, fallback)
+
+    @staticmethod
+    def static_getlist(owner, key, *, type=lambda x: x):
+        q = Session.query(Settings.value).\
+            filter(
+                Settings.owner == owner,
+                Settings.key == key).\
+            order_by(Settings.id.asc())
+        for x in q:
+            try:
+                yield type(x[0])
+            except:
+                continue
+
+    getlist = static_getlist
+
+    def instance_getlist(self, key, *, type=lambda x: x):
+        for x in self.static_getlist(self.owner, key, type):
+            yield x
+
+    @staticmethod
+    def static_getboolean(owner, key, *, fallback='NO FALLBACK'):
+        x = Session.query(Settings.value).\
+            filter(
+                Settings.owner == owner,
+                Settings.key == key).\
+            order_by(Settings.id.asc()).\
+            limit(1).\
+            scalar()
+        if x is None:
+            if fallback == 'NO FALLBACK':
+                raise KeyError
+            else:
+                return fallback
+        elif x == '1':
+            return True
+        elif x == '0':
+            return False
+        else:
+            raise ValueError("{!r} is not a valid boolean value. Should be '0' or '1'.".format(x))
+
+    getboolean = static_getboolean
+
+    def instance_getboolean(self, key, *, fallback='NO FALLBACK'):
+        return self.static_getboolean(self.owner, key, fallback)
+
+    @staticmethod
+    def static_set(owner, key, value, append=False):
+        logger.debug("Setting %s.%s to %r (append=%r)", owner, key, value, append)
+        settings = Session.query(Settings).\
+            filter(
+                Settings.owner == owner,
+                Settings.key == key)
+        if not append and settings.count() > 1:
+            raise ValueError("Cannot replace settings list.")
+        if append:
+            Session.add(Settings(owner=owner, key=key, value=value))
+        else:
+            settings = settings.first()
+            if settings:
+                settings.value = value
+            else:
+                Session.add(Settings(owner=owner, key=key, value=value))
+
+    set = static_set
+
+    def instance_set(self, key, value, append=False):
+        self.static_set(self.owner, key, value, append)
+
+    @staticmethod
+    def static_delete(owner, key):
+        Session.query(Settings).\
+            filter(
+                Settings.owner == owner,
+                Settings.key == key).\
+            delete()
+
+    delete = static_delete
+
+    def instance_delete(self, key):
+        self.static_delete(self.owner, key)

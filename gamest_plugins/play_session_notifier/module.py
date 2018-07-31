@@ -2,12 +2,11 @@ from gamest.plugins import GamestSessionPlugin, NotificationService
 from gamest.util import format_time
 
 class PlaySessionNotificationPlugin(GamestSessionPlugin):
+    SETTINGS_TAB_NAME = "Play Session Notifier"
     def __init__(self, application):
         super().__init__(application)
 
         self.running = application.RUNNING
-        self.send_begin = self.config.getboolean('PlaySessionNotificationPlugin', 'send_begin', fallback=True)
-        self.send_end = self.config.getboolean('PlaySessionNotificationPlugin', 'send_end', fallback=True)
         self.start_job = None
 
         self.logger.debug("Available notification services: %s",
@@ -17,6 +16,31 @@ class PlaySessionNotificationPlugin(GamestSessionPlugin):
         application.bind("<<GameEnd{}>>".format(self.play_session.id), self.onGameEnd, "+")
 
         self.logger.debug("Plugin initialized.\n\tsend_begin: %r", self.send_begin)
+
+    @property
+    def send_begin(self):
+        return self.config.getboolean('send_begin', fallback=True)
+
+    @property
+    def send_end(self):
+        return self.config.getboolean('send_end', fallback=True)
+
+    @classmethod
+    def get_settings_template(cls):
+        d = super().get_settings_template()
+        d[(cls.__name__, 'send_begin')] = {
+            'name' : 'Notify on game begin',
+            'type' : 'bool',
+            'default' : True,
+            'hint' : "If checked, send a notification when a game session begins.",
+        }
+        d[(cls.__name__, 'send_end')] = {
+            'name' : 'Notify on game end',
+            'type' : 'bool',
+            'default' : True,
+            'hint' : "If checked, send a notification when a game session ends.",
+        }
+        return d
 
     def onGameStart(self, e):
         self.logger.debug("onGameStart called")

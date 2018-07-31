@@ -8,14 +8,17 @@ import pkgutil
 import sys
 import traceback
 import webbrowser
-from tkinter import (Tk, Frame, Toplevel, StringVar, Label, Entry, Button,
-    N, S, E, W, DISABLED, NORMAL,
+from collections import OrderedDict
+from tkinter import (Tk, Frame, Toplevel, Label, Entry, Button, Checkbutton,
+    Text,
+    StringVar, IntVar,
+    N, S, E, W, DISABLED, NORMAL, END,
     ttk, messagebox, filedialog)
 
 import psutil
 
 import gamest_plugins
-from .db import App, UserApp, PlaySession, Session, set_settings, get_settings, get_settings_list
+from .db import App, UserApp, PlaySession, Session, DBConfig
 from .util import format_time
 from . import plugins, config, DATA_DIR
 
@@ -229,6 +232,7 @@ class AddBox(Frame):
     def __init__(self, parent, game='', path='', title='', seconds='', notes=''):
         Frame.__init__(self, parent)
         self.parent = parent
+        self.config = DBConfig(self.__class__.__name__)
 
         self.game = game
 
@@ -246,7 +250,7 @@ class AddBox(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = get_settings(self.__class__.__name__, 'geometry') or '400x160'
+        geometry = self.config.get('geometry', fallback='400x160')
         win.geometry(geometry)
         win.grid_columnconfigure(0, weight=0)
         win.grid_columnconfigure(1, weight=1)
@@ -277,7 +281,7 @@ class AddBox(Frame):
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
 
     def on_closing(self):
-        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.config.set('geometry', self.win.winfo_geometry())
         self.destroy()
 
     def add_game(self):
@@ -312,6 +316,7 @@ class AddTimeBox(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
+        self.config = DBConfig(self.__class__.__name__)
 
         self.seconds_entry = StringVar()
 
@@ -320,7 +325,7 @@ class AddTimeBox(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = get_settings(self.__class__.__name__, 'geometry') or '400x120'
+        geometry = self.config.get('geometry', fallback='400x120')
         win.geometry(geometry)
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.grid_columnconfigure(0, weight=0)
@@ -339,7 +344,7 @@ class AddTimeBox(Frame):
         Button(win, text="Add Time", command=self.add_time).grid(row=2, columnspan=2)
 
     def on_closing(self):
-        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.config.set('geometry', self.win.winfo_geometry())
         self.destroy()
 
     def add_time(self):
@@ -376,13 +381,14 @@ class ManualSessionSelector(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
+        self.config = DBConfig(self.__class__.__name__)
 
         self.createWidgets()
 
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = get_settings(self.__class__.__name__, 'geometry') or '400x80'
+        geometry = self.config.get('geometry', fallback='400x80')
         win.geometry(geometry)
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.grid_columnconfigure(0, weight=0)
@@ -398,7 +404,7 @@ class ManualSessionSelector(Frame):
         Button(win, text="Begin Session", command=self.begin_session).grid(row=5, columnspan=2)
 
     def on_closing(self):
-        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.config.set('geometry', self.win.winfo_geometry())
         self.destroy()
 
     def begin_session(self):
@@ -434,6 +440,7 @@ class ManualSession(Frame):
     def __init__(self, parent, ua):
         Frame.__init__(self, parent)
         self.parent = parent
+        self.config = DBConfig(self.__class__.__name__)
         self.ua = ua
         self.proc = FakeProcess()
         appli.RUNNING = (self.proc, self.ua)
@@ -444,7 +451,7 @@ class ManualSession(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = get_settings(self.__class__.__name__, 'geometry') or '400x80'
+        geometry = self.config.get('geometry', fallback='400x80')
         win.geometry(geometry)
         win.title("Manual Session")
 
@@ -452,7 +459,7 @@ class ManualSession(Frame):
         Button(win, text="End Session", command=self.end_session).grid(row=1)
 
     def end_session(self):
-        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.config.set('geometry', self.win.winfo_geometry())
         self.proc.running = False
         self.destroy()
 
@@ -460,6 +467,7 @@ class PickGame(Frame):
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
+        self.config = DBConfig(self.__class__.__name__)
 
         self.pick_games_list = []
         EnumWindows(EnumWindowsProc(self.populate_games), 1)
@@ -488,7 +496,7 @@ class PickGame(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = get_settings(self.__class__.__name__, 'geometry') or '400x80'
+        geometry = self.config.get('geometry', fallback='400x80')
         win.geometry(geometry)
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.grid_columnconfigure(0, weight=0)
@@ -503,18 +511,22 @@ class PickGame(Frame):
             logger.exception("Failed to create pickgamecombo. Games:\n%s\n\nException follows.", pprint.pformat(self.pick_games_list))
             Label(win, text="Failed to create pickgamecombo.").grid(row=0, column=1, sticky=E+W)
 
-        Button(win, text="Pick Game", command=self.do_pickgame).grid(row=1, columnspan=2)
+        Button(win, text="Add Game", command=self.do_pickgame).grid(row=1, columnspan=2)
+        Label(win, text="To add a game manually, leave the box empty.").grid(row=2, columnspan=2)
 
     def on_closing(self):
-        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.config.set('geometry', self.win.winfo_geometry())
         self.destroy()
 
     def do_pickgame(self):
         index = self.pickgamecombo.current()
-        game = self.pick_games_list[index][0]
-        title = self.pick_games_list[index][0]
-        path = self.pick_games_list[index][1]
-        AddBox(self.parent, game=game, title=title, path=path)
+        if index != -1:
+            game = self.pick_games_list[index][0]
+            title = self.pick_games_list[index][0]
+            path = self.pick_games_list[index][1]
+            AddBox(self.parent, game=game, title=title, path=path)
+        else:
+            AddBox(self.parent)
         self.on_closing()
 
 class SessionNote(Frame):
@@ -522,13 +534,14 @@ class SessionNote(Frame):
         Frame.__init__(self, parent)
         self.parent = parent
         self.session = session
+        self.config = DBConfig(self.__class__.__name__)
 
         self.createWidgets()
 
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = get_settings(self.__class__.__name__, 'geometry') or '600x400'
+        geometry = self.config.get('geometry', fallback='600x400')
         win.geometry(geometry)
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.title("Add note to play session")
@@ -543,7 +556,7 @@ class SessionNote(Frame):
         Button(win, text="Edit Note", command=self.edit_note).pack()
 
     def on_closing(self):
-        set_settings(self.__class__.__name__, 'geometry', self.win.winfo_geometry())
+        self.config.set('geometry', self.win.winfo_geometry())
         self.destroy()
 
     def edit_note(self):
@@ -556,27 +569,175 @@ class SessionNote(Frame):
         finally:
             self.on_closing()
 
+class SettingsTab(Frame):
+    def __init__(self, parent, settings_template):
+        super().__init__(parent)
+        self.parent = parent
+        self.settings_template = settings_template
+        self.new_values = {}
+
+        self.createWidgets()
+
+    def createWidgets(self):
+        self.grid_columnconfigure(0, weight=0)
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_columnconfigure(2, weight=0)
+        for index, (key, template) in enumerate(self.settings_template.items()):
+            Label(self, text=template['name']).grid(row=index, column=0)
+            if template['type'] == 'list':
+                text = Text(self, width=60, height=3)
+                if DBConfig.getlist(*key):
+                    text.insert(END, "\n".join(DBConfig.getlist(*key)))
+                elif template.get('default') is not None:
+                    text.insert(END, "\n".join(template.get('default')))
+                self.new_values[key] = lambda text=text: list(text.get(1.0, END).splitlines())
+                text.grid(row=index, column=1)
+            elif template['type'] == 'bool':
+                var = IntVar()
+                var.set(DBConfig.get(*key, type=int, fallback=template.get('default')) or False)
+                checkbutton = Checkbutton(self, variable=var)
+                self.new_values[key] = lambda var=var: str(var.get())
+                checkbutton.grid(row=index, column=1, sticky=W)
+            else:
+                var = StringVar()
+                var.set(DBConfig.get(*key, fallback=template.get('default')) or '')
+                entry = Entry(self, textvariable=var)
+                self.new_values[key] = var.get
+                entry.grid(row=index, column=1, sticky=E+W)
+
+            if template.get('hint'):
+                Button(
+                    self,
+                    text="?",
+                    command=lambda key=key, template=template, index=index: messagebox.showinfo(
+                        "Help for '{}'".format(template['name']),
+                        template['hint'])).grid(row=index, column=2, sticky=E)
+
+    def validate_settings(self):
+        valid = True
+        for key in self.new_values:
+            if self.settings_template[key].get('validate'):
+                try:
+                    self.settings_template[key].get('validate')(self.new_values[key]())
+                except ValueError as e:
+                    valid = False
+                    messagebox.showerror("Error in {}".format(key), str(e))
+        return valid
+
+    def save_settings(self):
+        if self.validate_settings():
+            for key in self.new_values:
+                if self.settings_template[key]['type'] == 'list':
+                    DBConfig.delete(*key)
+                    for v in self.new_values[key]():
+                        DBConfig.set(*key, v, append=True)
+                else:
+                    DBConfig.set(*key, self.new_values[key]())
+
+class SettingsBox(Frame):
+    def __init__(self, parent):
+        try:
+            super().__init__(parent)
+            self.parent = parent
+            self.config = DBConfig(self.__class__.__name__)
+
+            self.win = Toplevel(self)
+            self.win.title("Gamest Settings")
+            geometry = self.config.get('geometry', fallback=None)
+            if geometry:
+                self.win.geometry(geometry)
+
+            self.nb = ttk.Notebook(self.win)
+
+            try:
+                tab = SettingsTab(self.win, parent.settings_template)
+            except Exception:
+                logger.exception("Failed to build Application settings tab.")
+
+            self.nb.add(tab, text='Application')
+
+            for p in filter(lambda p: p.plugin.get_settings_template(), parent.installed_plugins.values()):
+                try:
+                    tab = SettingsTab(self.win, p.plugin.get_settings_template())
+                    self.nb.add(tab, text=p.plugin.SETTINGS_TAB_NAME)
+                except Exception:
+                    logger.exception("Failed to add tab for plugin %r", p)
+
+            self.nb.grid()
+            Button(self.win, text="Save", command=self.save_settings).grid(sticky=E+W)
+            Button(self.win, text="Cancel", command=self.on_closing).grid(sticky=E+W)
+
+            self.win.protocol("WM_DELETE_WINDOW", self.on_closing)
+        except:
+            logger.exception("Failed to build settings box.")
+            raise
+
+    def on_closing(self):
+        self.config.set('geometry', '+' + self.win.winfo_geometry().split('+', maxsplit=1)[1])
+        self.destroy()
+
+    def save_settings(self):
+        try:
+            valid = True
+            for t in self.nb.tabs():
+                self.nametowidget(t).validate_settings()
+            if valid:
+                for t in self.nb.tabs():
+                    self.nametowidget(t).save_settings()
+                self.on_closing()
+        except Exception as e:
+            logger.exception("Failed to save settings.")
+            messagebox.showerror("Failed to save settings", str(e))
+            self.on_closing()
+
 class Application(Frame):
-    def __init__(self, master=None, persistent_plugins=None, session_plugins=None):
+    def __init__(self, master=None, installed_plugins=None):
         Frame.__init__(self, master)
         self.RUNNING = None
         self.play_session = None
         self.config = config
 
+        self.installed_plugins = installed_plugins
+
         self.active_plugins = []
-        self.session_plugins = session_plugins or []
+
+        self.session_plugins = [
+            p.plugin
+            for p in installed_plugins.values()
+            if hasattr(p, 'plugin') and issubclass(p.plugin, plugins.GamestSessionPlugin)
+        ]
+
+        persistent_plugins = [
+            p.plugin
+            for p in installed_plugins.values()
+            if hasattr(p, 'plugin') and issubclass(p.plugin, plugins.GamestPersistentPlugin)
+        ]
+
         self.persistent_plugins = []
-        if persistent_plugins:
-            for p in persistent_plugins:
-                try:
-                    self.persistent_plugins.append(p(self))
-                    logger.debug("Plugin activated: %s", p.__name__)
-                except Exception:
-                    logger.exception("Could not initialize plugin %r.", p)
+        for p in persistent_plugins:
+            try:
+                self.persistent_plugins.append(p(self))
+                logger.debug("Plugin activated: %s", p.__name__)
+            except Exception:
+                logger.exception("Could not initialize plugin %r.", p)
 
         master.grid_columnconfigure(0, weight=1)
 
         self.createWidgets()
+
+    settings_template = OrderedDict()
+    settings_template[('Application', 'confirm_exit')] = {
+        'name' : 'Confirm exit',
+        'type' : 'bool',
+        'default' : True,
+        'hint' : "If checked, gamest will ask for confirmation before exiting.",
+    }
+    settings_template[('Application', 'debug')] = {
+        'name' : 'Debug',
+        'type' : 'bool',
+        'default' : False,
+        'hint' : "Write additional debug messages to the log file.",
+    }
 
     def do_report(self):
         filename = filedialog.asksaveasfilename(
@@ -614,8 +775,8 @@ class Application(Frame):
         self.elapsed_text.set("N/A")
         Label(self, textvariable=self.elapsed_text).grid(row=2, column=1)
 
-        Button(self, text="Pick Game", command=lambda: PickGame(self)).grid(row=3, column=0)
-        Button(self, text="Add Game Manually", command=lambda: AddBox(self)).grid(row=3, column=1)
+        Button(self, text="Add Game", command=lambda: PickGame(self)).grid(row=3, column=0)
+        Button(self, text="Settings", command=lambda: SettingsBox(self)).grid(row=3, column=1)
         Button(self, text="Save report", command=self.do_report).grid(row=4, column=0)
         self.note_button =  Button(self, text="Edit Note", command=lambda: SessionNote(self, self.play_session), state=DISABLED)
         self.note_button.grid(row=4, column=1)
@@ -702,10 +863,11 @@ class Application(Frame):
             Session.commit()
 
 def main():
+    if DBConfig.getboolean('Application', 'debug', fallback=False):
+        logging.getLogger().setLevel(logging.DEBUG)
     if not ctypes.windll.shell32.IsUserAnAdmin():
         sys.exit(ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.argv[0], ' '.join(sys.argv[1:]), None, 1))
 
-    from pkg_resources import get_distribution, DistributionNotFound
     try:
         logger.info("Starting gamest %s", pkg_resources.get_distribution('gamest').version)
     except pkg_resources.DistributionNotFound:
@@ -715,7 +877,7 @@ def main():
     global appli
     root = Tk()
     root.wm_title("Gamest")
-    geometry = get_settings('Application', 'geometry') or '400x150'
+    geometry = DBConfig.get('Application', 'geometry', fallback='400x150')
     root.geometry(geometry)
 
     installed_plugins = {
@@ -724,32 +886,13 @@ def main():
         in pkgutil.iter_modules(gamest_plugins.__path__, gamest_plugins.__name__ + ".")
     }
 
-    for p in filter(lambda p: issubclass(p.plugin, plugins.GamestPlugin), installed_plugins.values()):
-        p.plugin.copy_sample_config()
-
     logger.debug("Plugins found: %s", list(installed_plugins.keys()))
 
-    persistent_plugins = [
-        p.plugin
-        for p in installed_plugins.values()
-        if hasattr(p, 'plugin') and issubclass(p.plugin, plugins.GamestPersistentPlugin)
-    ]
-
-    logger.debug("Persistent plugins to activate: %s", ', '.join(p.__name__ for p in persistent_plugins))
-
-    session_plugins = [
-        p.plugin
-        for p in installed_plugins.values()
-        if hasattr(p, 'plugin') and issubclass(p.plugin, plugins.GamestSessionPlugin)
-    ]
-
-    logger.debug("Session plugins to activate: %s", ', '.join(p.__name__ for p in session_plugins))
-
-    appli = Application(master=root, persistent_plugins=persistent_plugins, session_plugins=session_plugins)
+    appli = Application(master=root, installed_plugins=installed_plugins)
     root.after(1000, appli.run)
 
     def on_closing():
-        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+        if DBConfig.get('Application', 'confirm_exit', type=bool, fallback=True) is False or messagebox.askokcancel("Quit", "Do you want to quit?"):
             if appli.RUNNING is not None:
                 logger.debug("appli.RUNNING is not None")
                 try:
@@ -759,7 +902,15 @@ def main():
                         Session.commit()
                 except:
                     logger.exception("Failed is_running check on shutdown")
-            set_settings('Application', 'geometry', root.winfo_geometry())
+            for plugin in set().union(appli.persistent_plugins, appli.active_plugins):
+                if hasattr(plugin, 'cleanup'):
+                    try:
+                        plugin.cleanup()
+                    except NotImplementedError:
+                        continue
+                    except Exception:
+                        logger.exception("Exception cleaning up %s", plugin.__class__.__name__)
+            DBConfig.set('Application', 'geometry', root.winfo_geometry())
             logger.debug("Committing and quitting.")
             Session.commit()
             root.destroy()

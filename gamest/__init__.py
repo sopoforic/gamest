@@ -23,13 +23,8 @@ config.read([CONFIG_PATH])
 if not os.path.exists(CONFIG_PATH):
     copyfile(pkg_resources.resource_filename('gamest', 'gamest.conf.default'), CONFIG_PATH)
 
-if config['options'].getboolean('debug'):
-    level = logging.DEBUG
-else:
-    level = logging.INFO
-
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=level,
+logging.basicConfig(level=logging.INFO,
             format='%(asctime)-15s %(levelname)-8s %(name)s: %(message)s')
 LOG_FILE = os.path.join(LOG_DIR, 'gamest.log')
 
