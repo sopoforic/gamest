@@ -9,8 +9,11 @@ class PlaySessionNotificationPlugin(GamestSessionPlugin):
         self.running = application.RUNNING
         self.start_job = None
 
-        self.logger.debug("Available notification services: %s",
-            list(p.__class__.__name__ for p in filter(lambda p: isinstance(p, NotificationService), self.application.persistent_plugins)))
+        self.logger.debug(
+            "Available notification services: %s",
+            list(p.__class__.__name__ for p in filter(
+                lambda p: isinstance(p, NotificationService),
+                self.application.persistent_plugins)))
 
         application.bind("<<GameStart{}>>".format(self.play_session.id), self.onGameStart, "+")
         application.bind("<<GameEnd{}>>".format(self.play_session.id), self.onGameEnd, "+")
@@ -65,11 +68,11 @@ class PlaySessionNotificationPlugin(GamestSessionPlugin):
                     self.play_session.user_app.app.name,
                     format_time(self.play_session.duration),
                     format_time(self.play_session.user_app.app.runtime)))
-        except:
+        except Exception:
             self.logger.exception("Failure in onGameEnd.")
         finally:
             self.cleanup()
 
     def cleanup(self):
         if self.start_job:
-                self.application.after_cancel(self.start_job)
+            self.application.after_cancel(self.start_job)

@@ -139,19 +139,19 @@ class DBConfig:
 
     @staticmethod
     def static_get(owner, key, *, type=lambda x: x, fallback='NO FALLBACK'):
-        x = Session.query(Settings.value).\
+        value = Session.query(Settings.value).\
             filter(
                 Settings.owner == owner,
                 Settings.key == key).\
             order_by(Settings.id.asc()).\
             limit(1).\
             scalar()
-        if x is None:
+        if value is None:
             if fallback == 'NO FALLBACK':
                 raise KeyError
             else:
                 return fallback
-        return type(x)
+        return type(value)
 
     get = static_get
 
@@ -160,43 +160,43 @@ class DBConfig:
 
     @staticmethod
     def static_getlist(owner, key, *, type=lambda x: x):
-        q = Session.query(Settings.value).\
+        values = Session.query(Settings.value).\
             filter(
                 Settings.owner == owner,
                 Settings.key == key).\
             order_by(Settings.id.asc())
-        for x in q:
+        for value in values:
             try:
-                yield type(x[0])
-            except:
+                yield type(value[0])
+            except Exception:
                 continue
 
     getlist = static_getlist
 
     def instance_getlist(self, key, *, type=lambda x: x):
-        for x in self.static_getlist(self.owner, key, type=type):
-            yield x
+        for value in self.static_getlist(self.owner, key, type=type):
+            yield value
 
     @staticmethod
     def static_getboolean(owner, key, *, fallback='NO FALLBACK'):
-        x = Session.query(Settings.value).\
+        value = Session.query(Settings.value).\
             filter(
                 Settings.owner == owner,
                 Settings.key == key).\
             order_by(Settings.id.asc()).\
             limit(1).\
             scalar()
-        if x is None:
+        if value is None:
             if fallback == 'NO FALLBACK':
                 raise KeyError
             else:
                 return fallback
-        elif x == '1':
+        elif value == '1':
             return True
-        elif x == '0':
+        elif value == '0':
             return False
         else:
-            raise ValueError("{!r} is not a valid boolean value. Should be '0' or '1'.".format(x))
+            raise ValueError("{!r} is not a valid boolean value. Should be '0' or '1'.".format(value))
 
     getboolean = static_getboolean
 

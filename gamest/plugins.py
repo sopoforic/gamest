@@ -1,10 +1,8 @@
 import logging
 from collections import OrderedDict
-from shutil import copyfile
 
-from . import DATA_DIR
 from .db import DBConfig
-from .errors import UnsupportedAppError, InvalidConfigurationError
+from .errors import UnsupportedAppError
 
 class GamestPlugin:
     SETTINGS_TAB_NAME = "Plugin"
@@ -45,12 +43,14 @@ class GameReporterPlugin(GamestSessionPlugin):
         super().__init__(application)
 
         if self.user_app_ids and (self.play_session.user_app_id not in self.user_app_ids):
-            self.logger.debug("User app ID did not match: %s not in %s (configured)",
+            self.logger.debug(
+                "User app ID did not match: %s not in %s (configured)",
                 self.play_session.user_app_id,
                 ', '.join(str(i) for i in self.user_app_ids))
-            raise UnsupportedAppError("Current user_app_id: {}. Configured: {}.".format(
-                self.play_session.user_app_id,
-                ', '.join(str(i) for i in self.user_app_ids)))
+            raise UnsupportedAppError(
+                "Current user_app_id: {}. Configured: {}.".format(
+                    self.play_session.user_app_id,
+                    ', '.join(str(i) for i in self.user_app_ids)))
         elif not self.user_app_ids and not (self.play_session.user_app.path and any(self.play_session.user_app.path.endswith(p) for p in self.PATH_ENDSWITH)):
             self.logger.debug("Path did not match: %s.", self.play_session.user_app.path)
             raise UnsupportedAppError("Current app path does not match a supported path.")

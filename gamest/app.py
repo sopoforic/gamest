@@ -20,7 +20,7 @@ import psutil
 import gamest_plugins
 from .db import App, UserApp, PlaySession, Session, DBConfig
 from .util import format_time
-from . import plugins, config, DATA_DIR
+from . import plugins, DATA_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -217,16 +217,15 @@ class SearchableCombobox(ttk.Combobox):
 
     def handle_keypress(self, event):
         if event.char.isprintable():
-            start = self.current() + 1 if self.current != -1 else 0
+            start = self.current() + 1 if self.current() != -1 else 0
             for index, game in enumerate(self.values[start:]):
                 if game.upper().startswith(event.char.upper()):
                     self.current(index+start)
-                    return
+                    break
             else:
                 for index, game in enumerate(self.values):
                     if game.upper().startswith(event.char.upper()):
                         self.current(index)
-                        return
 
 class AddBox(Frame):
     def __init__(self, parent, game='', path='', title='', seconds='', notes=''):
@@ -352,9 +351,9 @@ class AddTimeBox(Frame):
             ua = UserApp()
             index = self.gamecombo.current()
             if index == -1:
-                    messagebox.showerror(
-                        "No game selected",
-                        "A game must be selected.")
+                messagebox.showerror(
+                    "No game selected",
+                    "A game must be selected.")
             else:
                 app = Session.query(App).get(self.games[index][0])
 
@@ -744,13 +743,14 @@ class Application(Frame):
             initialdir=DATA_DIR,
             initialfile='report.html',
             title="Save report as...",
-            filetypes=(("HTML files","*.html"),),)
+            filetypes=(("HTML files", "*.html"),),
+        )
         if filename:
             html = generate_report()
             with open(filename, 'wb') as outfile:
                 outfile.write(html.encode('utf_8'))
             path = 'file://' + os.path.abspath(filename)
-            webbrowser.open(path,new=2)
+            webbrowser.open(path, new=2)
 
     def createWidgets(self):
         self.grid_columnconfigure(0, weight=0)
@@ -778,10 +778,10 @@ class Application(Frame):
         Button(self, text="Add Game", command=lambda: PickGame(self)).grid(row=3, column=0)
         Button(self, text="Settings", command=lambda: SettingsBox(self)).grid(row=3, column=1)
         Button(self, text="Save report", command=self.do_report).grid(row=4, column=0)
-        self.note_button =  Button(self, text="Edit Note", command=lambda: SessionNote(self, self.play_session), state=DISABLED)
+        self.note_button = Button(self, text="Edit Note", command=lambda: SessionNote(self, self.play_session), state=DISABLED)
         self.note_button.grid(row=4, column=1)
         Button(self, text="Add Time", command=lambda: AddTimeBox(self)).grid(row=5, column=0)
-        self.manual_session_button =  Button(self, text="Begin Manual Session", command=lambda: ManualSessionSelector(self), state=NORMAL)
+        self.manual_session_button = Button(self, text="Begin Manual Session", command=lambda: ManualSessionSelector(self), state=NORMAL)
         self.manual_session_button.grid(row=5, column=1)
 
         self.grid(stick=E+W)
