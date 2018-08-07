@@ -479,7 +479,7 @@ class PickGame(Frame):
         buff = ctypes.create_unicode_buffer(length + 1)
         GetWindowText(hwnd, buff, length + 1)
         GetWindowThreadProcessId(hwnd, ctypes.pointer(pid))
-        if config['options'].getboolean('visible_only') and (not buff.value or buff.value in trash or not ctypes.windll.user32.IsWindowVisible(hwnd)):
+        if self.config.getboolean('visible_only', fallback=True) and (not buff.value or buff.value in trash or not ctypes.windll.user32.IsWindowVisible(hwnd)):
             return True
         try:
             proc = psutil.Process(pid.value)

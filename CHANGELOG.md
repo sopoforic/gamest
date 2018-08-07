@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.1] - 2018-08-07
+
+### Fixed
+
+* The add game list now populates correctly.
+
 ## [2.0.0] - 2018-07-30
 
 ### Added
