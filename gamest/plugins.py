@@ -148,6 +148,8 @@ class GameReporterPlugin(GamestSessionPlugin):
         self.logger.debug("onGameStart called")
         if self.send_begin:
             self.job = self.application.after(35000, self.report_update)
+        else:
+            self.job = self.application.after(self.interval*60*1000, self.report_update)
 
     def onGameEnd(self, e):
         self.logger.debug("onGameEnd called")

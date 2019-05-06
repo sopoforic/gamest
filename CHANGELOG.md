@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.2] - 2018-08-07
+
+### Fixed
+
+* GameReporterPlugins now report during gameplay even if send_begin is off.
+
+## [2.0.1] - 2018-08-07
+
+### Fixed
+
+* The add game list now populates correctly.
+
 ## [2.0.0] - 2018-07-30
 
 ### Added
@@ -122,7 +134,9 @@
 * The gamest_plugins namespace package should work properly, now.
 * Restarting as administrator should work correctly, now.
 
-[Unreleased]: https://github.com/sopoforic/gamest/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/sopoforic/gamest/compare/v2.0.2...HEAD
+[2.0.2]: https://github.com/sopoforic/gamest/compare/v2.0.1...v2.0.2
+[2.0.1]: https://github.com/sopoforic/gamest/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/sopoforic/gamest/compare/v1.2.4...v2.0.0
 [1.2.4]: https://github.com/sopoforic/gamest/compare/v1.2.3...v1.2.4
 [1.2.3]: https://github.com/sopoforic/gamest/compare/v1.2.2...v1.2.3
