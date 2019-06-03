@@ -1,6 +1,7 @@
 import logging
 import os
 
+import sqlalchemy.ext.declarative
 from sqlalchemy import Column, Index, ForeignKey, Integer, Text, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref, object_session
@@ -11,7 +12,7 @@ from . import DATA_DIR
 
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
+Base = declarative_base() # type: sqlalchemy.ext.declarative.api.Base
 
 DBPATH = os.path.join(DATA_DIR, 'gamest.db')
 

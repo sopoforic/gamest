@@ -1,20 +1,22 @@
+# pylint: disable=too-many-ancestors
+"""Track time playing games."""
 import ctypes
 import datetime
 import importlib
 import logging
 import os
-import pkg_resources
 import pkgutil
 import sys
 import traceback
 import webbrowser
 from collections import OrderedDict
-from tkinter import (Tk, Frame, Toplevel, Label, Entry, Button, Checkbutton,
-    Text,
-    StringVar, IntVar,
-    N, S, E, W, DISABLED, NORMAL, END,
-    ttk, messagebox, filedialog)
+from typing import Set, Tuple, Union, Dict
 
+from tkinter import (Tk, Frame, Toplevel, Label, Entry, Button, Checkbutton,
+                     Text, StringVar, IntVar, E, W, DISABLED, NORMAL, END,
+                     ttk, messagebox, filedialog)
+
+import pkg_resources
 import psutil
 
 import gamest_plugins
@@ -24,14 +26,17 @@ from . import plugins, DATA_DIR
 
 logger = logging.getLogger(__name__)
 
-def excepthook(excType=None, excValue=None, tracebackobj=None):
+
+def excepthook(etype=None, value=None, tracebackobj=None):
     logger.critical(''.join(traceback.format_exception(
-        etype=excType,
-        value=excValue,
+        etype=etype,
+        value=value,
         tb=tracebackobj,
     )).strip())
 
+
 sys.excepthook = excepthook
+
 
 class FakeProcess:
     def __init__(self):
@@ -40,12 +45,13 @@ class FakeProcess:
     def is_running(self):
         return self.running
 
+
 def identify_window(pid, text):
     """Identify the app associated with a window."""
     proc = None
     path = None
     uas = Session.query(UserApp).filter(UserApp.window_text == text)
-    nontext = Session.query(UserApp).filter(UserApp.window_text == None)
+    nontext = Session.query(UserApp).filter(UserApp.window_text == None)  # noqa pylint: disable=C0121
     if uas.count():
         proc = psutil.Process(pid)
         try:
@@ -57,7 +63,7 @@ def identify_window(pid, text):
         if app:
             return app, proc
     if nontext.count():
-        if proc == None:
+        if proc is None:
             proc = psutil.Process(pid)
             path = proc.exe()
             app = nontext.filter(UserApp.path == path).first()
@@ -65,32 +71,27 @@ def identify_window(pid, text):
                 return app, proc
     return None, None
 
-trash = ['Default IME',
-         'MSCTFIME UI',
-         'xonsh',
-         'Battery Meter',
-         'Network Flyout',
-         'python',
-         'Origin',
-         'HiddenFaxWindow',
-         'raptr',
-         'Steam',
-         'Settings',
-         'Dropbox',
-         'Program Manager',
-         'Gamest'
-         ]
 
-EnumWindows = ctypes.windll.user32.EnumWindows
-EnumWindowsProc = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int))
-GetWindowText = ctypes.windll.user32.GetWindowTextW
-GetWindowTextLength = ctypes.windll.user32.GetWindowTextLengthW
-IsWindowVisible = ctypes.windll.user32.IsWindowVisible
-GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId
+trash = ['Default IME', 'MSCTFIME UI', 'xonsh', 'Battery Meter',
+         'Network Flyout', 'python', 'Origin', 'HiddenFaxWindow', 'raptr',
+         'Steam', 'Settings', 'Dropbox', 'Program Manager', 'Gamest']
 
-seen = set()
+EnumWindows = ctypes.windll.user32.EnumWindows  # pylint: disable=invalid-name
+EnumWindowsProc = ctypes.WINFUNCTYPE(  # pylint: disable=invalid-name
+    ctypes.c_bool,
+    ctypes.POINTER(ctypes.c_int),
+    ctypes.POINTER(ctypes.c_int))
+GetWindowText = ctypes.windll.user32.GetWindowTextW  # pylint: disable=invalid-name
+GetWindowTextLength = ctypes.windll.user32.GetWindowTextLengthW  # pylint: disable=invalid-name
+IsWindowVisible = ctypes.windll.user32.IsWindowVisible  # pylint: disable=invalid-name
+GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId  # pylint: disable=invalid-name
 
-def foreach_window(hwnd, lParam):
+seen: Set[Tuple[int, str]] = set()
+
+
+def foreach_window(hwnd, lParam):  # pylint: disable=invalid-name
+    """Identify running games."""
+    del lParam
     pid = ctypes.c_ulong()
     length = GetWindowTextLength(hwnd)
     buff = ctypes.create_unicode_buffer(length + 1)
@@ -113,10 +114,14 @@ def foreach_window(hwnd, lParam):
         seen.add((pid.value, buff.value))
         return True
 
+
 def generate_report():
-    apps = list(Session.query(App).filter(App.user_apps.any(UserApp.play_sessions.any())).order_by(App.name).all())
-    html = (
-"""
+    """Generate an HTML game report and return it as a string."""
+    apps = list(
+        Session.query(App).
+            filter(App.user_apps.any(UserApp.play_sessions.any())).
+            order_by(App.name).all())
+    html = """
 <!DOCTYPE html>
 <head>
   <title>Gamest Report</title>
@@ -148,7 +153,7 @@ def generate_report():
 </body>
 </html>
 """
-)
+
     summary = """
 <table>
   <thead>
@@ -159,17 +164,18 @@ def generate_report():
   </thead>
   <tbody>
 """
-    for a in apps:
-        summary += "    <tr>\n"
-        summary += "      <td><a href=\"#{}\">{}</a></td>\n".format(a.id, a.name)
-        summary += "      <td>{}</td>\n".format(format_time(a.runtime))
-        summary += "    </tr>\n"
+    for app in apps:
+        summary += """\
+    <tr>
+      <td><a href=\"#{}\">{}</a></td>
+      <td>{}</td>
+    </tr>""".format(app.id, app.name, format_time(app.runtime))
+
     summary += "  </tbody>\n</table>\n"
 
     details = ""
-
-    for a in apps:
-        details += "<h2 id=\"{}\">{}</h2>\n".format(a.id, a.name)
+    for app in apps:
+        details += "<h2 id=\"{}\">{}</h2>\n".format(app.id, app.name)
         details += "<table class=\"details\">\n"
         details += "  <thead>\n"
         details += "    <tr>\n"
@@ -179,25 +185,26 @@ def generate_report():
         details += "    </tr>\n"
         details += "  </thead>\n"
         details += "  <tbody>\n"
-        for u in a.user_apps:
-            if u.initial_runtime:
+        for uapp in app.user_apps:
+            if uapp.initial_runtime:
                 details += "    <tr>\n"
                 details += "      <td>Initial runtime</td>\n"
-                details += "      <td>{}</td>\n".format(format_time(u.initial_runtime))
+                details += "      <td>{}</td>\n".format(format_time(uapp.initial_runtime))
                 details += "      <td></td>\n"
                 details += "    </tr>\n"
-            for s in u.play_sessions:
+            for session in uapp.play_sessions:
                 details += "    <tr>\n"
-                details += "      <td>{}</td>\n".format(s.started.strftime('%Y-%m-%d %H:%M:%S'))
-                details += "      <td>{}</td>\n".format(format_time(s.duration))
-                note = s.note if s.note else ''
-                if note and s.status_updates:
+                details += "      <td>{}</td>\n".format(
+                    session.started.strftime('%Y-%m-%d %H:%M:%S'))
+                details += "      <td>{}</td>\n".format(format_time(session.duration))
+                note = session.note if session.note else ''
+                if note and session.status_updates:
                     note += '<br><br>'
-                if s.status_updates:
+                if session.status_updates:
                     note += "        <table>\n"
                     note += "          <thead><tr><th>Timestamp</th><th>Update</th></tr></thead>\n"
                     note += "          <tbody>\n"
-                    for update in s.status_updates:
+                    for update in session.status_updates:
                         note += "            <tr><td>{}</td><td><pre>{}</pre></td></tr>\n".format(
                             update.timestamp.strftime('%Y-%m-%d %H:%M:%S'), update.note)
                     note += "          </tbody></table>\n"
@@ -207,6 +214,7 @@ def generate_report():
         details += "</table>\n"
 
     return html.format(summary, details)
+
 
 class SearchableCombobox(ttk.Combobox):
     def __init__(self, parent, values):
@@ -227,7 +235,9 @@ class SearchableCombobox(ttk.Combobox):
                     if game.upper().startswith(event.char.upper()):
                         self.current(index)
 
+
 class AddBox(Frame):
+    """Form for adding a new UserApp."""
     def __init__(self, parent, game='', path='', title='', seconds='', notes=''):
         Frame.__init__(self, parent)
         self.parent = parent
@@ -285,33 +295,34 @@ class AddBox(Frame):
 
     def add_game(self):
         try:
-            ua = UserApp()
+            user_app = UserApp()
             index = self.gamecombo.current()
             if index == -1:
-                ua.app = App(name=self.gamecombo.get())
-                logger.info("Adding new app: %s", ua.app.name)
+                user_app.app = App(name=self.gamecombo.get())
+                logger.info("Adding new app: %s", user_app.app.name)
             else:
-                ua.app_id = self.games[index][0]
-            ua.path = self.path_entry.get()
+                user_app.app_id = self.games[index][0]
+            user_app.path = self.path_entry.get()
             notes = self.notes_entry.get()
-            ua.notes = notes if notes else None
+            user_app.notes = notes if notes else None
             seconds = self.seconds_entry.get()
-            ua.initial_runtime = int(seconds) if seconds else 0
+            user_app.initial_runtime = int(seconds) if seconds else 0
             title = self.title_entry.get()
-            ua.window_text = title if title else None
-            Session.add(ua)
+            user_app.window_text = title if title else None
+            Session.add(user_app)
             Session.commit()
-            logger.info("Added new userapp: %s", repr(ua))
+            logger.info("Added new userapp: %s", repr(user_app))
 
             # reset the seen items so the new app can be detected
-            global seen
-            seen = set()
+            seen.clear()
         except Exception:
             Session.rollback()
         finally:
             self.on_closing()
 
+
 class AddTimeBox(Frame):
+    """Form for adding manual time to a game."""
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
@@ -348,7 +359,7 @@ class AddTimeBox(Frame):
 
     def add_time(self):
         try:
-            ua = UserApp()
+            user_app = None
             index = self.gamecombo.current()
             if index == -1:
                 messagebox.showerror(
@@ -357,26 +368,33 @@ class AddTimeBox(Frame):
             else:
                 app = Session.query(App).get(self.games[index][0])
 
-                ua = Session.query(UserApp).filter(
+                user_app = Session.query(UserApp).filter(
                     UserApp.app == app,
-                    UserApp.path == None,
-                    UserApp.window_text == None).first()
-                if not ua:
-                    ua = UserApp(app=app, path=None, window_text=None, note=None, initial_runtime=0)
+                    UserApp.path == None,  # noqa: E711 pylint: disable=C0121
+                    UserApp.window_text == None).first()  # noqa: E711 pylint: disable=C0121
+                if not user_app:
+                    user_app = UserApp(
+                        app=app,
+                        path=None,
+                        window_text=None,
+                        note=None,
+                        initial_runtime=0)
 
                 seconds = self.seconds_entry.get()
-                ua.initial_runtime += int(seconds) if seconds else 0
+                user_app.initial_runtime += int(seconds) if seconds else 0
 
-                Session.add(ua)
+                Session.add(user_app)
                 Session.commit()
-                logger.info("Added manual time for userapp: %s", repr(ua))
+                logger.info("Added manual time for userapp: %s", repr(user_app))
         except Exception:
-            logger.exception("Failed to add manual time. UserApp: %r", ua)
+            logger.exception("Failed to add manual time. UserApp: %r", user_app)
             Session.rollback()
         finally:
             self.on_closing()
 
+
 class ManualSessionSelector(Frame):
+    """Window to choose a game for a manual session."""
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
@@ -416,33 +434,35 @@ class ManualSessionSelector(Frame):
                         "A game must be selected.")
                 else:
                     app = Session.query(App).get(self.games[index][0])
-                    ua = Session.query(UserApp).filter(
+                    uapp = Session.query(UserApp).filter(
                         UserApp.app == app,
-                        UserApp.path == None,
-                        UserApp.window_text == None).first()
-                    if not ua:
-                        ua = UserApp(app=app, path=None, window_text=None, note=None)
-                        logger.info("Added new userapp: %s", repr(ua))
-                        Session.add(ua)
-                    ManualSession(self.parent, ua)
+                        UserApp.path == None,  # noqa pylint: disable=C0121
+                        UserApp.window_text == None).first() # noqa pylint: disable=C0121
+                    if not uapp:
+                        uapp = UserApp(app=app, path=None, window_text=None, note=None)
+                        logger.info("Added new userapp: %s", repr(uapp))
+                        Session.add(uapp)
+                    ManualSession(self.parent, uapp)
             else:
                 messagebox.showerror(
                     "Gaming session in progress",
                     "Another game is already running. Quit that game first.")
-        except:
+        except Exception:
             logger.exception("Exception in begin_session.")
             Session.rollback()
         finally:
             self.on_closing()
 
+
 class ManualSession(Frame):
-    def __init__(self, parent, ua):
+    """Window to indicate a running manual session."""
+    def __init__(self, parent, user_app):
         Frame.__init__(self, parent)
         self.parent = parent
         self.config = DBConfig(self.__class__.__name__)
-        self.ua = ua
+        self.user_app = user_app
         self.proc = FakeProcess()
-        appli.RUNNING = (self.proc, self.ua)
+        appli.RUNNING = (self.proc, self.user_app)
         self.createWidgets()
 
         self.win.protocol("WM_DELETE_WINDOW", self.end_session)
@@ -454,7 +474,7 @@ class ManualSession(Frame):
         win.geometry(geometry)
         win.title("Manual Session")
 
-        Label(win, text="A session of {} is in progress.".format(self.ua.app)).grid()
+        Label(win, text="A session of {} is in progress.".format(self.user_app.app)).grid()
         Button(win, text="End Session", command=self.end_session).grid(row=1)
 
     def end_session(self):
@@ -462,7 +482,9 @@ class ManualSession(Frame):
         self.proc.running = False
         self.destroy()
 
+
 class PickGame(Frame):
+    """Window listing running processes to add to gamest."""
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
@@ -474,12 +496,16 @@ class PickGame(Frame):
         self.createWidgets()
 
     def populate_games(self, hwnd, lParam):
+        del lParam
         pid = ctypes.c_ulong()
         length = GetWindowTextLength(hwnd)
         buff = ctypes.create_unicode_buffer(length + 1)
         GetWindowText(hwnd, buff, length + 1)
         GetWindowThreadProcessId(hwnd, ctypes.pointer(pid))
-        if self.config.getboolean('visible_only', fallback=True) and (not buff.value or buff.value in trash or not ctypes.windll.user32.IsWindowVisible(hwnd)):
+        if (self.config.getboolean('visible_only', fallback=True)
+            and (not buff.value
+                 or buff.value in trash
+                 or not ctypes.windll.user32.IsWindowVisible(hwnd))):
             return True
         try:
             proc = psutil.Process(pid.value)
@@ -488,7 +514,7 @@ class PickGame(Frame):
             except psutil.AccessDenied:
                 path = proc.name()
             self.pick_games_list.append((buff.value, path))
-        except:
+        except Exception:
             pass
         return True
 
@@ -503,12 +529,17 @@ class PickGame(Frame):
         win.title("Pick a Game")
         Label(win, text="Game: ").grid()
         try:
-            self.pickgamecombo = ttk.Combobox(win, values=["{} ({})".format(g[0].replace('"', ''), g[1]) for g in self.pick_games_list])
+            self.pickgamecombo = ttk.Combobox(
+                win,
+                values=["{} ({})".format(
+                    g[0].replace('"', ''), g[1]) for g in self.pick_games_list])
             self.pickgamecombo.grid(row=0, column=1, sticky=E+W)
-        except:
+        except Exception:
             import pprint
-            logger.exception("Failed to create pickgamecombo. Games:\n%s\n\nException follows.", pprint.pformat(self.pick_games_list))
-            Label(win, text="Failed to create pickgamecombo.").grid(row=0, column=1, sticky=E+W)
+            logger.exception("Failed to create pickgamecombo. Games:\n%s",
+                             pprint.pformat(self.pick_games_list))
+            Label(win, text="Failed to create pickgamecombo.").\
+                grid(row=0, column=1, sticky=E+W)
 
         Button(win, text="Add Game", command=self.do_pickgame).grid(row=1, columnspan=2)
         Label(win, text="To add a game manually, leave the box empty.").grid(row=2, columnspan=2)
@@ -518,6 +549,7 @@ class PickGame(Frame):
         self.destroy()
 
     def do_pickgame(self):
+        """Create an AddBox for the selected process."""
         index = self.pickgamecombo.current()
         if index != -1:
             game = self.pick_games_list[index][0]
@@ -528,7 +560,9 @@ class PickGame(Frame):
             AddBox(self.parent)
         self.on_closing()
 
+
 class SessionNote(Frame):
+    """Window for editing the session note."""
     def __init__(self, parent, session):
         Frame.__init__(self, parent)
         self.parent = parent
@@ -545,7 +579,9 @@ class SessionNote(Frame):
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.title("Add note to play session")
 
-        Label(win, text="{}, {}".format(self.session.user_app, self.session.started.strftime('%Y-%m-%d %H:%M:%S'))).pack()
+        Label(win, text="{}, {}".format(
+            self.session.user_app,
+            self.session.started.strftime('%Y-%m-%d %H:%M:%S'))).pack()
 
         self.note_text = Text(win, width=72, height=22)
         if self.session.note:
@@ -568,7 +604,9 @@ class SessionNote(Frame):
         finally:
             self.on_closing()
 
+
 class SettingsTab(Frame):
+    """A tab grouping related settings."""
     def __init__(self, parent, settings_template):
         super().__init__(parent)
         self.parent = parent
@@ -613,6 +651,7 @@ class SettingsTab(Frame):
                         template['hint'])).grid(row=index, column=2, sticky=E)
 
     def validate_settings(self):
+        """Validate settings and show errors if invalid."""
         valid = True
         for key in self.new_values:
             if self.settings_template[key].get('validate'):
@@ -622,24 +661,27 @@ class SettingsTab(Frame):
                         messagebox.showerror(
                             "Error in {}".format(self.settings_template[key]['name']),
                             "Invalid value for {}".format(self.settings_template[key]['name']))
-                except ValueError as e:
+                except ValueError as exc:
                     valid = False
                     messagebox.showerror(
                         "Error in {}".format(self.settings_template[key]['name']),
-                        "Error in {}: {}".format(key[0], str(e)))
+                        "Error in {}: {}".format(key[0], str(exc)))
         return valid
 
     def save_settings(self):
+        """Validate settings and save to DB."""
         if self.validate_settings():
             for key in self.new_values:
                 if self.settings_template[key]['type'] == 'list':
                     DBConfig.delete(*key)
-                    for v in self.new_values[key]():
-                        DBConfig.set(*key, v, append=True)
+                    for value in self.new_values[key]():
+                        DBConfig.set(*key, value, append=True)
                 else:
                     DBConfig.set(*key, self.new_values[key]())
 
+
 class SettingsBox(Frame):
+    """Settings box containing settings tabs."""
     def __init__(self, parent):
         try:
             super().__init__(parent)
@@ -652,28 +694,29 @@ class SettingsBox(Frame):
             if geometry:
                 self.win.geometry(geometry)
 
-            self.nb = ttk.Notebook(self.win)
+            self.notebook = ttk.Notebook(self.win)
 
             try:
                 tab = SettingsTab(self.win, parent.settings_template)
             except Exception:
                 logger.exception("Failed to build Application settings tab.")
 
-            self.nb.add(tab, text='Application')
+            self.notebook.add(tab, text='Application')
 
-            for p in filter(lambda p: p.plugin.get_settings_template(), parent.installed_plugins.values()):
-                try:
-                    tab = SettingsTab(self.win, p.plugin.get_settings_template())
-                    self.nb.add(tab, text=p.plugin.SETTINGS_TAB_NAME)
-                except Exception:
-                    logger.exception("Failed to add tab for plugin %r", p)
+            for plugin in parent.installed_plugins.values():
+                if plugin.plugin.get_settings_template():
+                    try:
+                        tab = SettingsTab(self.win, plugin.plugin.get_settings_template())
+                        self.notebook.add(tab, text=plugin.plugin.SETTINGS_TAB_NAME)
+                    except Exception:
+                        logger.exception("Failed to add tab for plugin %r", plugin)
 
-            self.nb.grid()
+            self.notebook.grid()
             Button(self.win, text="Save", command=self.save_settings).grid(sticky=E+W)
             Button(self.win, text="Cancel", command=self.on_closing).grid(sticky=E+W)
 
             self.win.protocol("WM_DELETE_WINDOW", self.on_closing)
-        except:
+        except Exception:
             logger.exception("Failed to build settings box.")
             raise
 
@@ -684,40 +727,40 @@ class SettingsBox(Frame):
     def save_settings(self):
         try:
             valid = True
-            for t in self.nb.tabs():
-                if not self.nametowidget(t).validate_settings():
+            for tab in self.notebook.tabs():
+                if not self.nametowidget(tab).validate_settings():
                     valid = False
             if valid:
-                for t in self.nb.tabs():
-                    self.nametowidget(t).save_settings()
+                for tab in self.notebook.tabs():
+                    self.nametowidget(tab).save_settings()
                 self.parent.event_generate("<<SettingsUpdated>>")
                 self.on_closing()
-        except Exception as e:
+        except Exception as exc:
             logger.exception("Failed to save settings.")
             messagebox.showerror(
                 "Failed to save settings",
                 ("Failed to save settings: {}\n"
                  "\n"
-                 "More information may be available in the log.").format(str(e)))
+                 "More information may be available in the log.").format(str(exc)))
             self.on_closing()
 
+
 class Application(Frame):
+    """The main application which holds all state."""
     def __init__(self, master=None, installed_plugins=None):
         Frame.__init__(self, master)
         self.RUNNING = None
         self.play_session = None
+        self.started = None
         self.config = DBConfig(owner='Application')
 
         self.installed_plugins = installed_plugins
-
         self.active_plugins = []
-
         self.session_plugins = [
             p.plugin
             for p in installed_plugins.values()
             if hasattr(p, 'plugin') and issubclass(p.plugin, plugins.GamestSessionPlugin)
         ]
-
         persistent_plugins = [
             p.plugin
             for p in installed_plugins.values()
@@ -725,18 +768,19 @@ class Application(Frame):
         ]
 
         self.persistent_plugins = []
-        for p in persistent_plugins:
+        for plugin in persistent_plugins:
             try:
-                self.persistent_plugins.append(p(self))
-                logger.debug("Plugin activated: %s", p.__name__)
+                self.persistent_plugins.append(plugin(self))
+                logger.debug("Plugin activated: %s", plugin.__name__)
             except Exception:
-                logger.exception("Could not initialize plugin %r.", p)
+                logger.exception("Could not initialize plugin %r.", plugin)
 
         master.grid_columnconfigure(0, weight=1)
 
         self.createWidgets()
 
-        def update_log_level(e):
+        def update_log_level(event):
+            del event
             if self.config.getboolean('debug', fallback=False):
                 logging.getLogger().setLevel(logging.DEBUG)
                 logger.info("Log level set to DEBUG")
@@ -746,21 +790,23 @@ class Application(Frame):
 
         self.bind("<<SettingsUpdated>>", update_log_level, "+")
 
-    settings_template = OrderedDict()
+    settings_template: Dict[Tuple[str, str], Dict[str, Union[str, bool]]] = OrderedDict()
     settings_template[('Application', 'confirm_exit')] = {
-        'name' : 'Confirm exit',
-        'type' : 'bool',
-        'default' : True,
-        'hint' : "If checked, gamest will ask for confirmation before exiting.",
+        'name': 'Confirm exit',
+        'type': 'bool',
+        'default': True,
+        'hint': "If checked, gamest will ask for confirmation before exiting.",
     }
     settings_template[('Application', 'debug')] = {
-        'name' : 'Debug',
-        'type' : 'bool',
-        'default' : False,
-        'hint' : "Write additional debug messages to the log file.",
+        'name': 'Debug',
+        'type': 'bool',
+        'default': False,
+        'hint': "Write additional debug messages to the log file.",
     }
 
-    def do_report(self):
+    @staticmethod
+    def do_report():
+        """Create and save a playtime report."""
         filename = filedialog.asksaveasfilename(
             initialdir=DATA_DIR,
             initialfile='report.html',
@@ -800,15 +846,30 @@ class Application(Frame):
         Button(self, text="Add Game", command=lambda: PickGame(self)).grid(row=3, column=0)
         Button(self, text="Settings", command=lambda: SettingsBox(self)).grid(row=3, column=1)
         Button(self, text="Save report", command=self.do_report).grid(row=4, column=0)
-        self.note_button = Button(self, text="Edit Note", command=lambda: SessionNote(self, self.play_session), state=DISABLED)
+        self.note_button = Button(
+            self,
+            text="Edit Note",
+            command=lambda: SessionNote(self, self.play_session),
+            state=DISABLED)
         self.note_button.grid(row=4, column=1)
-        Button(self, text="Add Time", command=lambda: AddTimeBox(self)).grid(row=5, column=0)
-        self.manual_session_button = Button(self, text="Begin Manual Session", command=lambda: ManualSessionSelector(self), state=NORMAL)
+        Button(
+            self,
+            text="Add Time",
+            command=lambda: AddTimeBox(self)).grid(row=5, column=0)
+        self.manual_session_button = Button(
+            self,
+            text="Begin Manual Session",
+            command=lambda: ManualSessionSelector(self),
+            state=NORMAL)
         self.manual_session_button.grid(row=5, column=1)
 
         self.grid(stick=E+W)
 
     def run(self):
+        """Check for a new game every five seconds.
+
+        This method runs when no game is currently being tracked.
+        """
         try:
             EnumWindows(EnumWindowsProc(foreach_window), 1)
             if self.RUNNING is not None:
@@ -816,30 +877,36 @@ class Application(Frame):
                 self.rtlabel.config(fg='green')
                 self.started = datetime.datetime.now()
                 self.RUNNING = (self.RUNNING[0], Session.merge(self.RUNNING[1]))
-                self.play_session = PlaySession(user_app=self.RUNNING[1], started=self.started)
+                self.play_session = PlaySession(
+                    user_app=self.RUNNING[1],
+                    started=self.started)
                 Session.add(self.play_session)
                 Session.flush()
-                for p in self.session_plugins:
+                for plugin in self.session_plugins:
                     try:
-                        self.active_plugins.append(p(self))
-                        logger.debug("Plugin activated: %s", p.__name__)
+                        self.active_plugins.append(plugin(self))
+                        logger.debug("Plugin activated: %s", plugin.__name__)
                     except plugins.UnsupportedAppError:
                         pass
                     except Exception:
-                        logger.exception("Failed to initialize session plugin %r.", p)
+                        logger.exception("Failed to initialize session plugin %r.", plugin)
                 self.event_generate("<<GameStart{}>>".format(self.play_session.id))
                 logger.debug("Now running %s", self.RUNNING[1].app.name)
                 self.running_text.set("Now running: ")
-                self.running_app.set("{} (#{})".format(self.RUNNING[1].app.name, self.RUNNING[1].id))
-                self.time_text.set("{}".format(format_time(self.RUNNING[1].app.runtime)))
+                self.running_app.set(
+                    "{} (#{})".format(
+                        self.RUNNING[1].app.name,
+                        self.RUNNING[1].id))
+                self.time_text.set(
+                    "{}".format(
+                        format_time(self.RUNNING[1].app.runtime)))
                 self.elapsed_text.set(format_time(0))
-                self.sent = False
             if self.RUNNING is None:
                 root.after(5000, self.run)
                 self.manual_session_button.config(state=NORMAL)
             else:
                 root.after(5000, self.wait)
-        except:
+        except Exception:
             logger.exception("Mysterious error")
             root.after(5000, self.run)
         finally:
@@ -847,6 +914,10 @@ class Application(Frame):
             Session.commit()
 
     def wait(self):
+        """Update running game state every 5 seconds.
+
+        This method runs when a game is currently being tracked.
+        """
         try:
             if self.RUNNING[0].is_running():
                 try:
@@ -855,7 +926,7 @@ class Application(Frame):
                     self.note_button.config(state=NORMAL)
                     self.time_text.set(format_time(self.RUNNING[1].app.runtime))
                     self.elapsed_text.set(format_time(elapsed))
-                except:
+                except Exception:
                     logger.exception("Failure in running branch")
                 finally:
                     root.after(5000, self.wait)
@@ -865,7 +936,7 @@ class Application(Frame):
                     elapsed = int((datetime.datetime.now() - self.started).total_seconds())
                     self.play_session.duration = elapsed
                     self.running_text.set("Last running: ")
-                except:
+                except Exception:
                     logger.exception("Failure in not running branch")
                 finally:
                     Session.commit()
@@ -876,7 +947,7 @@ class Application(Frame):
                     self.unbind("<<GameStart{}>>".format(self.play_session.id))
                     self.unbind("<<GameEnd{}>>".format(self.play_session.id))
                     root.after(50, self.run)
-        except:
+        except Exception:
             logger.exception("Failure with is_running(), probably")
             self.RUNNING = None
             root.after(50, self.run)
@@ -884,11 +955,18 @@ class Application(Frame):
             root.update()
             Session.commit()
 
+
 def main():
     if DBConfig.getboolean('Application', 'debug', fallback=False):
         logging.getLogger().setLevel(logging.DEBUG)
     if not ctypes.windll.shell32.IsUserAnAdmin():
-        sys.exit(ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.argv[0], ' '.join(sys.argv[1:]), None, 1))
+        # restart as administrator
+        sys.exit(
+            ctypes.windll.shell32.ShellExecuteW(
+                None,
+                "runas",
+                sys.argv[0],
+                ' '.join(sys.argv[1:]), None, 1))
 
     try:
         logger.info("Starting gamest %s", pkg_resources.get_distribution('gamest').version)
@@ -922,7 +1000,7 @@ def main():
                         elapsed = int((datetime.datetime.now() - appli.started).total_seconds())
                         appli.play_session.duration = elapsed
                         Session.commit()
-                except:
+                except Exception:
                     logger.exception("Failed is_running check on shutdown")
             for plugin in set().union(appli.persistent_plugins, appli.active_plugins):
                 if hasattr(plugin, 'cleanup'):
@@ -939,6 +1017,7 @@ def main():
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
     appli.mainloop()
+
 
 if __name__ == '__main__':
     main()

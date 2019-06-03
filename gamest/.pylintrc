@@ -1,0 +1,14 @@
+[MESSAGES CONTROL]
+disable = no-else-return
+
+[BASIC]
+good-names = logger,createWidgets,lParam
+
+[TYPECHECK]
+generated-members =
+    query
+    add
+    commit
+    rollback
+    merge
+    flush

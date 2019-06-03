@@ -1,5 +1,6 @@
 import logging
 from collections import OrderedDict
+from typing import List
 
 from .db import DBConfig
 from .errors import UnsupportedAppError
@@ -37,7 +38,7 @@ class NotificationService(GamestPersistentPlugin):
         raise NotImplementedError
 
 class GameReporterPlugin(GamestSessionPlugin):
-    PATH_ENDSWITH = []
+    PATH_ENDSWITH : List[str] = []
 
     def __init__(self, application):
         super().__init__(application)
