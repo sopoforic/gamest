@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.0.4] - 2020-02-24
+
+### Changed
+
+* Updated dependencies.
+
+### Fixed
+
+* No longer die when a process vanishes while it's being identified.
+
 ## [2.0.3] - 2019-05-06
 
 ### Changed
