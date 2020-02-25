@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.0.6] - 2020-02-24
+
+### Fixed
+
+* Attempt to avoid emitting SQL during commits.
+
 ## [2.0.5] - 2020-02-24
 
 ### Fixed
@@ -156,7 +162,8 @@
 * The gamest_plugins namespace package should work properly, now.
 * Restarting as administrator should work correctly, now.
 
-[Unreleased]: https://github.com/sopoforic/gamest/compare/v2.0.5...HEAD
+[Unreleased]: https://github.com/sopoforic/gamest/compare/v2.0.6...HEAD
+[2.0.6]: https://github.com/sopoforic/gamest/compare/v2.0.5...v2.0.6
 [2.0.5]: https://github.com/sopoforic/gamest/compare/v2.0.4...v2.0.5
 [2.0.4]: https://github.com/sopoforic/gamest/compare/v2.0.3...v2.0.4
 [2.0.3]: https://github.com/sopoforic/gamest/compare/v2.0.2...v2.0.3

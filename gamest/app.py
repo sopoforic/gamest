@@ -925,9 +925,8 @@ class Application(Frame):
                     self.elapsed_text.set(format_time(elapsed))
                 except Exception:
                     logger.exception("Failure in running branch")
-                finally:
-                    root.after(5000, self.wait)
             else:
+                self.RUNNING = None
                 try:
                     self.rtlabel.config(fg='black')
                     elapsed = int((datetime.datetime.now() - self.started).total_seconds())
@@ -936,20 +935,20 @@ class Application(Frame):
                 except Exception:
                     logger.exception("Failure in not running branch")
                 finally:
-                    Session.commit()
-                    self.RUNNING = None
                     self.manual_session_button.config(state=NORMAL)
                     self.event_generate("<<GameEnd{}>>".format(self.play_session.id))
                     self.active_plugins = []
                     self.unbind("<<GameStart{}>>".format(self.play_session.id))
                     self.unbind("<<GameEnd{}>>".format(self.play_session.id))
-                    root.after(50, self.run)
         except Exception:
-            logger.exception("Failure with is_running(), probably")
             self.RUNNING = None
-            root.after(50, self.run)
+            logger.exception("Failure with is_running(), probably")
         finally:
             root.update()
+            if self.RUNNING:
+                root.after(5000, self.wait)
+            else:
+                root.after(5000, self.run)
             Session.commit()
 
 
