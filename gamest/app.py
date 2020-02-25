@@ -54,10 +54,7 @@ def identify_window(pid, text):
     nontext = Session.query(UserApp).filter(UserApp.window_text == None)  # noqa pylint: disable=C0121
     if uas.count():
         proc = psutil.Process(pid)
-        try:
-            path = proc.exe()
-        except psutil.AccessDenied:
-            path = proc.name()
+        path = proc.exe()
         logger.debug("Trying to identify app, path=%s", path)
         app = uas.filter(UserApp.path == path).first()
         if app:
