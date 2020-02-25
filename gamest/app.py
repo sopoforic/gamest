@@ -100,7 +100,7 @@ def foreach_window(hwnd, lParam):  # pylint: disable=invalid-name
         return True
     try:
         app, proc = identify_window(pid.value, buff.value)
-    except psutil.AccessDenied:
+    except (psutil.AccessDenied, psutil.NoSuchProcess):
         seen.add((pid.value, buff.value))
         return True
     if app:
