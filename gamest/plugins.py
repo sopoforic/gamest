@@ -161,3 +161,13 @@ class GameReporterPlugin(GamestSessionPlugin):
     def cleanup(self):
         if self.job:
             self.application.after_cancel(self.job)
+
+class IdentifierPlugin(GamestPersistentPlugin):
+    def candidates(self):
+        return []
+
+    def identify_game(self):
+        return None
+
+    def clear_cache(self):
+        pass

@@ -1,28 +1,30 @@
 # pylint: disable=too-many-ancestors
 """Track time playing games."""
-import ctypes
 import datetime
 import importlib
 import logging
 import os
 import pkgutil
+import platform
 import sys
 import traceback
 import webbrowser
 from collections import OrderedDict
-from typing import Set, Tuple, Union, Dict
+from typing import Tuple, Union, Dict
 
 from tkinter import (Tk, Frame, Toplevel, Label, Entry, Button, Checkbutton,
                      Text, StringVar, IntVar, E, W, DISABLED, NORMAL, END,
-                     ttk, messagebox, filedialog)
+                     ttk, messagebox, filedialog, scrolledtext)
 
 import pkg_resources
-import psutil
 
 import gamest_plugins
 from .db import App, UserApp, PlaySession, Session, DBConfig
 from .util import format_time
 from . import plugins, DATA_DIR
+
+if platform.system() == 'Windows':
+    import ctypes
 
 logger = logging.getLogger(__name__)
 
@@ -46,78 +48,11 @@ class FakeProcess:
         return self.running
 
 
-def identify_window(pid, text):
-    """Identify the app associated with a window."""
-    proc = None
-    path = None
-    uas = Session.query(UserApp).filter(UserApp.window_text == text)
-    nontext = Session.query(UserApp).filter(UserApp.window_text == None)  # noqa pylint: disable=C0121
-    if uas.count():
-        proc = psutil.Process(pid)
-        path = proc.exe()
-        logger.debug("Trying to identify app, path=%s", path)
-        app = uas.filter(UserApp.path == path).first()
-        if app:
-            return app, proc
-    if nontext.count():
-        if proc is None:
-            proc = psutil.Process(pid)
-            path = proc.exe()
-            app = nontext.filter(UserApp.path == path).first()
-            if app:
-                return app, proc
-    return None, None
-
-
-trash = ['Default IME', 'MSCTFIME UI', 'xonsh', 'Battery Meter',
-         'Network Flyout', 'python', 'Origin', 'HiddenFaxWindow', 'raptr',
-         'Steam', 'Settings', 'Dropbox', 'Program Manager', 'Gamest']
-
-EnumWindows = ctypes.windll.user32.EnumWindows  # pylint: disable=invalid-name
-EnumWindowsProc = ctypes.WINFUNCTYPE(  # pylint: disable=invalid-name
-    ctypes.c_bool,
-    ctypes.POINTER(ctypes.c_int),
-    ctypes.POINTER(ctypes.c_int))
-GetWindowText = ctypes.windll.user32.GetWindowTextW  # pylint: disable=invalid-name
-GetWindowTextLength = ctypes.windll.user32.GetWindowTextLengthW  # pylint: disable=invalid-name
-IsWindowVisible = ctypes.windll.user32.IsWindowVisible  # pylint: disable=invalid-name
-GetWindowThreadProcessId = ctypes.windll.user32.GetWindowThreadProcessId  # pylint: disable=invalid-name
-
-seen: Set[Tuple[int, str]] = set()
-
-
-def foreach_window(hwnd, lParam):  # pylint: disable=invalid-name
-    """Identify running games."""
-    del lParam
-    pid = ctypes.c_ulong()
-    length = GetWindowTextLength(hwnd)
-    buff = ctypes.create_unicode_buffer(length + 1)
-    GetWindowText(hwnd, buff, length + 1)
-    GetWindowThreadProcessId(hwnd, ctypes.pointer(pid))
-    if not buff.value or buff.value in trash:
-        return True
-    if (pid.value, buff.value) in seen:
-        return True
-    try:
-        app, proc = identify_window(pid.value, buff.value)
-    except (psutil.AccessDenied, psutil.NoSuchProcess):
-        seen.add((pid.value, buff.value))
-        return True
-    if app:
-        logger.debug("Identified app: %s", app.app.name)
-        appli.RUNNING = (proc, app)
-        return False
-    else:
-        seen.add((pid.value, buff.value))
-        return True
-
-
 def generate_report():
     """Generate an HTML game report and return it as a string."""
-    apps = list(
-        Session.query(App).
-            filter(App.user_apps.any(UserApp.play_sessions.any())).
-            order_by(App.name).all())
+    apps = list(Session.query(App).
+                filter(App.user_apps.any(UserApp.play_sessions.any())).
+                order_by(App.name).all())
     html = """
 <!DOCTYPE html>
 <head>
@@ -235,15 +170,18 @@ class SearchableCombobox(ttk.Combobox):
 
 class AddBox(Frame):
     """Form for adding a new UserApp."""
-    def __init__(self, parent, game='', path='', title='', seconds='', notes=''):
+
+    def __init__(self, parent, game='', identifier_plugin='', identifier_data='', title='', seconds='', notes=''):
         Frame.__init__(self, parent)
         self.parent = parent
         self.config = DBConfig(self.__class__.__name__)
 
         self.game = game
 
-        self.path_entry = StringVar()
-        self.path_entry.set(path)
+        self.plugin_entry = StringVar()
+        self.plugin_entry.set(identifier_plugin)
+        self.data_entry = StringVar()
+        self.data_entry.set(identifier_data)
         self.title_entry = StringVar()
         self.title_entry.set(title)
         self.seconds_entry = StringVar()
@@ -270,19 +208,22 @@ class AddBox(Frame):
         Label(win, text="Game: ").grid()
         self.gamecombo.grid(row=0, column=1, sticky=E+W)
 
-        Label(win, text="Path: ").grid()
-        Entry(win, textvariable=self.path_entry).grid(row=1, column=1, sticky=E+W)
+        Label(win, text="Plugin: ").grid()
+        Entry(win, textvariable=self.plugin_entry).grid(row=1, column=1, sticky=E+W)
+
+        Label(win, text="Plugin Data: ").grid()
+        Entry(win, textvariable=self.data_entry).grid(row=2, column=1, sticky=E+W)
 
         Label(win, text="Window Title: ").grid()
-        Entry(win, textvariable=self.title_entry).grid(row=2, column=1, sticky=E+W)
+        Entry(win, textvariable=self.title_entry).grid(row=3, column=1, sticky=E+W)
 
         Label(win, text="Initial seconds: ").grid()
-        Entry(win, textvariable=self.seconds_entry).grid(row=3, column=1, sticky=E+W)
+        Entry(win, textvariable=self.seconds_entry).grid(row=4, column=1, sticky=E+W)
 
         Label(win, text="Notes: ").grid()
-        Entry(win, textvariable=self.notes_entry).grid(row=4, column=1, sticky=E+W)
+        Entry(win, textvariable=self.notes_entry).grid(row=5, column=1, sticky=E+W)
 
-        Button(win, text="Add Game", command=self.add_game).grid(row=5, columnspan=2)
+        Button(win, text="Add Game", command=self.add_game).grid(row=6, columnspan=2)
 
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
 
@@ -299,7 +240,8 @@ class AddBox(Frame):
                 logger.info("Adding new app: %s", user_app.app.name)
             else:
                 user_app.app_id = self.games[index][0]
-            user_app.path = self.path_entry.get()
+            user_app.identifier_plugin = self.plugin_entry.get()
+            user_app.identifier_data = self.data_entry.get()
             notes = self.notes_entry.get()
             user_app.notes = notes if notes else None
             seconds = self.seconds_entry.get()
@@ -310,8 +252,9 @@ class AddBox(Frame):
             Session.commit()
             logger.info("Added new userapp: %s", repr(user_app))
 
-            # reset the seen items so the new app can be detected
-            seen.clear()
+            for p in appli.persistent_plugins:
+                if isinstance(p, plugins.IdentifierPlugin):
+                    p.clear_cache()
         except Exception:
             Session.rollback()
         finally:
@@ -320,6 +263,7 @@ class AddBox(Frame):
 
 class AddTimeBox(Frame):
     """Form for adding manual time to a game."""
+
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
@@ -392,6 +336,7 @@ class AddTimeBox(Frame):
 
 class ManualSessionSelector(Frame):
     """Window to choose a game for a manual session."""
+
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
@@ -434,7 +379,7 @@ class ManualSessionSelector(Frame):
                     uapp = Session.query(UserApp).filter(
                         UserApp.app == app,
                         UserApp.path == None,  # noqa pylint: disable=C0121
-                        UserApp.window_text == None).first() # noqa pylint: disable=C0121
+                        UserApp.window_text == None).first()  # noqa pylint: disable=C0121
                     if not uapp:
                         uapp = UserApp(app=app, path=None, window_text=None, note=None)
                         logger.info("Added new userapp: %s", repr(uapp))
@@ -453,6 +398,7 @@ class ManualSessionSelector(Frame):
 
 class ManualSession(Frame):
     """Window to indicate a running manual session."""
+
     def __init__(self, parent, user_app):
         Frame.__init__(self, parent)
         self.parent = parent
@@ -482,38 +428,20 @@ class ManualSession(Frame):
 
 class PickGame(Frame):
     """Window listing running processes to add to gamest."""
+
     def __init__(self, parent):
         Frame.__init__(self, parent)
         self.parent = parent
         self.config = DBConfig(self.__class__.__name__)
 
         self.pick_games_list = []
-        EnumWindows(EnumWindowsProc(self.populate_games), 1)
+        for p in appli.persistent_plugins:
+            if isinstance(p, plugins.IdentifierPlugin):
+                logger.debug("Adding candidates from %r", p)
+                self.pick_games_list.extend(p.candidates())
+                logger.debug("Added candidates from %r", p)
 
         self.createWidgets()
-
-    def populate_games(self, hwnd, lParam):
-        del lParam
-        pid = ctypes.c_ulong()
-        length = GetWindowTextLength(hwnd)
-        buff = ctypes.create_unicode_buffer(length + 1)
-        GetWindowText(hwnd, buff, length + 1)
-        GetWindowThreadProcessId(hwnd, ctypes.pointer(pid))
-        if (self.config.getboolean('visible_only', fallback=True)
-            and (not buff.value
-                 or buff.value in trash
-                 or not ctypes.windll.user32.IsWindowVisible(hwnd))):
-            return True
-        try:
-            proc = psutil.Process(pid.value)
-            try:
-                path = proc.exe()
-            except psutil.AccessDenied:
-                path = proc.name()
-            self.pick_games_list.append((buff.value, path))
-        except Exception:
-            pass
-        return True
 
     def createWidgets(self):
         win = Toplevel(self)
@@ -528,8 +456,11 @@ class PickGame(Frame):
         try:
             self.pickgamecombo = ttk.Combobox(
                 win,
-                values=["{} ({})".format(
-                    g[0].replace('"', ''), g[1]) for g in self.pick_games_list])
+                values=["{} ({}: {})".format(
+                    g.note.replace('"', ''),
+                    g.identifier_plugin,
+                    g.identifier_data)
+                        for g in self.pick_games_list])
             self.pickgamecombo.grid(row=0, column=1, sticky=E+W)
         except Exception:
             import pprint
@@ -549,10 +480,12 @@ class PickGame(Frame):
         """Create an AddBox for the selected process."""
         index = self.pickgamecombo.current()
         if index != -1:
-            game = self.pick_games_list[index][0]
-            title = self.pick_games_list[index][0]
-            path = self.pick_games_list[index][1]
-            AddBox(self.parent, game=game, title=title, path=path)
+            game = self.pick_games_list[index]
+            AddBox(
+                self.parent,
+                identifier_plugin=game.identifier_plugin,
+                identifier_data=game.identifier_data,
+                title=game.note)
         else:
             AddBox(self.parent)
         self.on_closing()
@@ -560,6 +493,7 @@ class PickGame(Frame):
 
 class SessionNote(Frame):
     """Window for editing the session note."""
+
     def __init__(self, parent, session):
         Frame.__init__(self, parent)
         self.parent = parent
@@ -604,6 +538,7 @@ class SessionNote(Frame):
 
 class SettingsTab(Frame):
     """A tab grouping related settings."""
+
     def __init__(self, parent, settings_template):
         super().__init__(parent)
         self.parent = parent
@@ -619,7 +554,7 @@ class SettingsTab(Frame):
         for index, (key, template) in enumerate(self.settings_template.items()):
             Label(self, text=template['name']).grid(row=index, column=0)
             if template['type'] == 'list':
-                text = Text(self, width=60, height=3)
+                text = scrolledtext.ScrolledText(self, width=60, height=template.get('lines', 3), undo=True)
                 if DBConfig.getlist(*key):
                     text.insert(END, "\n".join(DBConfig.getlist(*key)))
                 elif template.get('default') is not None:
@@ -679,6 +614,7 @@ class SettingsTab(Frame):
 
 class SettingsBox(Frame):
     """Settings box containing settings tabs."""
+
     def __init__(self, parent):
         try:
             super().__init__(parent)
@@ -713,6 +649,7 @@ class SettingsBox(Frame):
             Button(self.win, text="Cancel", command=self.on_closing).grid(sticky=E+W)
 
             self.win.protocol("WM_DELETE_WINDOW", self.on_closing)
+
         except Exception:
             logger.exception("Failed to build settings box.")
             raise
@@ -744,6 +681,7 @@ class SettingsBox(Frame):
 
 class Application(Frame):
     """The main application which holds all state."""
+
     def __init__(self, master=None, installed_plugins=None):
         Frame.__init__(self, master)
         self.RUNNING = None
@@ -868,7 +806,11 @@ class Application(Frame):
         This method runs when no game is currently being tracked.
         """
         try:
-            EnumWindows(EnumWindowsProc(foreach_window), 1)
+            for p in appli.persistent_plugins:
+                if isinstance(p, plugins.IdentifierPlugin):
+                    self.RUNNING = p.identify_game()
+                    if self.RUNNING is not None:
+                        break
             if self.RUNNING is not None:
                 self.manual_session_button.config(state=DISABLED)
                 self.rtlabel.config(fg='green')
@@ -955,7 +897,7 @@ class Application(Frame):
 def main():
     if DBConfig.getboolean('Application', 'debug', fallback=False):
         logging.getLogger().setLevel(logging.DEBUG)
-    if not ctypes.windll.shell32.IsUserAnAdmin():
+    if platform.system() == 'Windows' and not ctypes.windll.shell32.IsUserAnAdmin():
         # restart as administrator
         sys.exit(
             ctypes.windll.shell32.ShellExecuteW(
@@ -988,7 +930,8 @@ def main():
     root.after(1000, appli.run)
 
     def on_closing():
-        if DBConfig.get('Application', 'confirm_exit', type=bool, fallback=True) is False or messagebox.askokcancel("Quit", "Do you want to quit?"):
+        if (DBConfig.getboolean('Application', 'confirm_exit', fallback=True) is False or
+                messagebox.askokcancel("Quit", "Do you want to quit?")):
             if appli.RUNNING is not None:
                 logger.debug("appli.RUNNING is not None")
                 try:

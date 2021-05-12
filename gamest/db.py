@@ -3,6 +3,7 @@ import os
 
 import sqlalchemy.ext.declarative
 from sqlalchemy import Column, Index, ForeignKey, Integer, Text, Boolean, DateTime
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref, object_session
 from sqlalchemy import create_engine
@@ -51,6 +52,10 @@ class UserApp(Base):
 
     note = Column(Text)
     path = Column(Text, index=True)
+
+    identifier_plugin = Column(Text)
+    identifier_data = Column(Text)
+
     initial_runtime = Column(Integer, nullable=False, default=0)
     window_text = Column(Text, index=True)
 
@@ -128,6 +133,21 @@ class Settings(Base):
             self.id, self.owner, self.key, self.value)
 
 Base.metadata.create_all(engine)
+
+def schema_updates():
+    """Update the DB schema."""
+    try:
+        Session.execute('ALTER TABLE user_app ADD COLUMN identifier_plugin VARCHAR')
+        logger.info("Added 'identifier_plugin' column to table 'user_app'")
+    except OperationalError:
+        logger.debug("'identifier_plugin' column already present on table 'user_app'")
+    try:
+        Session.execute('ALTER TABLE user_app ADD COLUMN identifier_data VARCHAR')
+        logger.info("Added 'identifier_data' column to table 'user_app'")
+    except OperationalError:
+        logger.debug("'identifier_data' column already present on table 'user_app'")
+
+schema_updates()
 
 class DBConfig:
     def __init__(self, owner):

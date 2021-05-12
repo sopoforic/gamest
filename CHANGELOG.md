@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.0] - 2021-05-12
+
+### Changed
+
+* Now game detection is done using plugins.
+* Window titles are no longer supported for identification.
+
 ## [2.0.6] - 2020-02-24
 
 ### Fixed
@@ -162,7 +169,8 @@
 * The gamest_plugins namespace package should work properly, now.
 * Restarting as administrator should work correctly, now.
 
-[Unreleased]: https://github.com/sopoforic/gamest/compare/v2.0.6...HEAD
+[Unreleased]: https://github.com/sopoforic/gamest/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/sopoforic/gamest/compare/v2.0.6...v3.0.0
 [2.0.6]: https://github.com/sopoforic/gamest/compare/v2.0.5...v2.0.6
 [2.0.5]: https://github.com/sopoforic/gamest/compare/v2.0.4...v2.0.5
 [2.0.4]: https://github.com/sopoforic/gamest/compare/v2.0.3...v2.0.4
