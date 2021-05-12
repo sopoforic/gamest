@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.0.2] - 2021-05-12
+
+### Fixed
+
+* Candidate listing and identification treated usernames differently, causing detection failure on Windows.
+
 ## [3.0.1] - 2021-05-12
 
 ### Changed

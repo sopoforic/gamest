@@ -116,7 +116,7 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
                  and not any(re.match(t, p.info['name']) for t in trash_regex)]
 
         procs.sort(key=lambda p: p.info['create_time'], reverse=True)
-        
+
         candidates = []
         for p in procs:
             try:
@@ -138,7 +138,7 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
     def identify_game(self):
         candidates = [p
                       for p in psutil.process_iter(['name', 'username', 'exe', 'cmdline', 'create_time'])
-                      if (not self.username or p.info['username'] == self.username)
+                      if p.info['username'].endswith(self.username)
                       and p.info['name'] not in trash_names
                       and not any(re.match(t, p.info['name']) for t in trash_regex)]
 
