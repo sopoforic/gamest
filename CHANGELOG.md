@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.0.4] - 2021-05-13
+
+### Changed
+
+* Fixed icon.
+
 ## [3.0.3] - 2021-05-13
 
 ### Changed
