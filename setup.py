@@ -12,7 +12,7 @@ setup(
     author="Tracy Poff",
     author_email="tracy.poff@gmail.com",
     package_data={
-        "": ["icon.svg"],
+        "": ["icon.png"],
     },
     packages=['gamest', 'gamest_plugins'],
     install_requires=['sqlalchemy', 'psutil>=5.7.0', 'requests', 'appdirs'],
