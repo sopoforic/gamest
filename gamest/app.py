@@ -14,7 +14,7 @@ from typing import Tuple, Union, Dict
 
 from tkinter import (Tk, Frame, Toplevel, Label, Entry, Button, Checkbutton,
                      Text, StringVar, IntVar, E, W, DISABLED, NORMAL, END,
-                     ttk, messagebox, filedialog, scrolledtext)
+                     ttk, messagebox, filedialog, scrolledtext, PhotoImage)
 
 import pkg_resources
 
@@ -927,6 +927,8 @@ def main():
     logger.debug("Plugins found: %s", list(installed_plugins.keys()))
 
     appli = Application(master=root, installed_plugins=installed_plugins)
+    icon = PhotoImage("icon", file=pkg_resources.resource_filename('gamest', 'icon.png'))
+    appli.tk.call('wm', 'iconphoto', root._w, icon)
     root.after(1000, appli.run)
 
     def on_closing():
