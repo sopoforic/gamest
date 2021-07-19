@@ -1,7 +1,7 @@
 appdirs==1.4.4
 certifi==2021.5.30
 chardet==4.0.0
-idna==3.1
+idna==3.2
 psutil==5.8.0
 requests==2.25.1
 SQLAlchemy==1.4.0
