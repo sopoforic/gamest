@@ -15,6 +15,7 @@ from typing import Tuple, Union, Dict
 from tkinter import (Tk, Frame, Toplevel, Label, Entry, Button, Checkbutton,
                      Text, StringVar, IntVar, E, W, DISABLED, NORMAL, END,
                      ttk, messagebox, filedialog, scrolledtext, PhotoImage)
+from sqlalchemy.sql import or_
 
 import pkg_resources
 
@@ -51,7 +52,9 @@ class FakeProcess:
 def generate_report():
     """Generate an HTML game report and return it as a string."""
     apps = list(Session.query(App).
-                filter(App.user_apps.any(UserApp.play_sessions.any())).
+                filter(App.user_apps.any(or_(
+                    UserApp.play_sessions.any(),
+                    UserApp.initial_runtime > 0))).
                 order_by(App.name).all())
     html = """
 <!DOCTYPE html>
@@ -378,7 +381,7 @@ class ManualSessionSelector(Frame):
                         UserApp.identifier_plugin == 'manual_time').first()
                     if not uapp:
                         uapp = UserApp(app=app, identifier_plugin='manual_time', note=None)
-                        logger.info("Added new userapp: %s", repr(uapp))
+                        logger.info("Added new userapp for manual session: %s", repr(uapp))
                         Session.add(uapp)
                     ManualSession(self.parent, uapp)
             else:

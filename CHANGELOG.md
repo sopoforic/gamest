@@ -1,5 +1,12 @@
 # Changelog
 
+## [4.0.0] - 2022-03-04
+
+### Changed
+
+* Removed unused DB columns.
+* Now the report shows games with only initial_runtime.
+
 ## [3.0.4] - 2021-05-13
 
 ### Changed
@@ -193,7 +200,9 @@
 * The gamest_plugins namespace package should work properly, now.
 * Restarting as administrator should work correctly, now.
 
-[Unreleased]: https://github.com/sopoforic/gamest/compare/v3.0.3...HEAD
+[Unreleased]: https://github.com/sopoforic/gamest/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/sopoforic/gamest/compare/v3.0.4...v4.0.0
+[3.0.4]: https://github.com/sopoforic/gamest/compare/v3.0.3...v3.0.4
 [3.0.3]: https://github.com/sopoforic/gamest/compare/v3.0.2...v3.0.3
 [3.0.2]: https://github.com/sopoforic/gamest/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/sopoforic/gamest/compare/v3.0.0...v3.0.1
