@@ -311,14 +311,11 @@ class AddTimeBox(Frame):
 
                 user_app = Session.query(UserApp).filter(
                     UserApp.app == app,
-                    UserApp.path == None,  # noqa: E711 pylint: disable=C0121
-                    UserApp.window_text == None).first()  # noqa: E711 pylint: disable=C0121
+                    UserApp.identifier_plugin == 'manual_time').first()
                 if not user_app:
                     user_app = UserApp(
                         app=app,
-                        path=None,
-                        window_text=None,
-                        note=None,
+                        identifier_plugin='manual_time',
                         initial_runtime=0)
 
                 seconds = self.seconds_entry.get()
@@ -378,10 +375,9 @@ class ManualSessionSelector(Frame):
                     app = Session.query(App).get(self.games[index][0])
                     uapp = Session.query(UserApp).filter(
                         UserApp.app == app,
-                        UserApp.path == None,  # noqa pylint: disable=C0121
-                        UserApp.window_text == None).first()  # noqa pylint: disable=C0121
+                        UserApp.identifier_plugin == 'manual_time').first()
                     if not uapp:
-                        uapp = UserApp(app=app, path=None, window_text=None, note=None)
+                        uapp = UserApp(app=app, identifier_plugin='manual_time', note=None)
                         logger.info("Added new userapp: %s", repr(uapp))
                         Session.add(uapp)
                     ManualSession(self.parent, uapp)
@@ -806,12 +802,14 @@ class Application(Frame):
         This method runs when no game is currently being tracked.
         """
         try:
-            for p in appli.persistent_plugins:
-                if isinstance(p, plugins.IdentifierPlugin):
-                    self.RUNNING = p.identify_game()
-                    if self.RUNNING is not None:
-                        break
+            if self.RUNNING is None:
+                for p in appli.persistent_plugins:
+                    if isinstance(p, plugins.IdentifierPlugin):
+                        self.RUNNING = p.identify_game()
+                        if self.RUNNING is not None:
+                            break
             if self.RUNNING is not None:
+                logger.debug("self.RUNNING is not None")
                 self.manual_session_button.config(state=DISABLED)
                 self.rtlabel.config(fg='green')
                 self.started = datetime.datetime.now()

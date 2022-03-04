@@ -27,14 +27,9 @@ class App(Base):
     name = Column(Text, nullable=False)
     disambiguation = Column(Text)
 
-    window_text = Column(Text)
-    use_window_text = Column(Boolean, nullable=False, default=False)
-
-    default_path = Column(Text)
-
     def __repr__(self):
-        return "App(id={}, name={}, disambiguation={}, window_text={}, use_window_text={})".format(
-            self.id, self.name, self.disambiguation, self.window_text, self.use_window_text)
+        return "App(id={}, name={}, disambiguation={})".format(
+            self.id, self.name, self.disambiguation)
 
     def __str__(self):
         return self.name
@@ -45,6 +40,9 @@ class App(Base):
 
 class UserApp(Base):
     __tablename__ = 'user_app'
+    __table_args__ = (
+        Index('user_app_identifier_plugin_data_idx', 'identifier_plugin', 'identifier_data'),
+    )
     id = Column(Integer, primary_key=True)
 
     app_id = Column(Integer, ForeignKey('app.id'), nullable=False, index=True)
@@ -146,6 +144,21 @@ def schema_updates():
         logger.info("Added 'identifier_data' column to table 'user_app'")
     except OperationalError:
         logger.debug("'identifier_data' column already present on table 'user_app'")
+    try:
+        Session.execute('ALTER TABLE app DROP COLUMN window_text')
+        logger.info("Removed 'window_text' column from table 'app'")
+    except OperationalError:
+        logger.debug("'window_text' column already removed from table 'app'")
+    try:
+        Session.execute('ALTER TABLE app DROP COLUMN use_window_text')
+        logger.info("Removed 'use_window_text' column from table 'app'")
+    except OperationalError:
+        logger.debug("'use_window_text' column already removed from table 'app'")
+    try:
+        Session.execute('ALTER TABLE app DROP COLUMN default_path')
+        logger.info("Removed 'default_path' column from table 'app'")
+    except OperationalError:
+        logger.debug("'default_path' column already removed from table 'app'")
 
 schema_updates()
 
