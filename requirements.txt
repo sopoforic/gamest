@@ -4,5 +4,5 @@ chardet==4.0.0
 idna==3.3
 psutil==5.9.0
 requests==2.27.1
-SQLAlchemy==1.4.0
+SQLAlchemy==1.4.32
 urllib3==1.26.4
