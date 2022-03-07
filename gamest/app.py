@@ -259,6 +259,7 @@ class AddBox(Frame):
                 if isinstance(p, plugins.IdentifierPlugin):
                     p.clear_cache()
         except Exception:
+            logger.exception("Failed to add game.")
             Session.rollback()
         finally:
             self.on_closing()
