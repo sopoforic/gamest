@@ -3,6 +3,6 @@ certifi==2024.2.2
 chardet==5.2.0
 idna==3.7
 psutil==5.9.8
-requests==2.31.0
+requests==2.32.0
 SQLAlchemy==1.4.39
 urllib3==1.26.9
