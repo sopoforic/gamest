@@ -1,7 +1,7 @@
 appdirs==1.4.4
 certifi==2024.6.2
 chardet==5.2.0
-idna==3.3
+idna==3.7
 psutil==5.9.1
 requests==2.31.0
 SQLAlchemy==1.4.39
