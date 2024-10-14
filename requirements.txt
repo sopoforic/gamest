@@ -5,4 +5,4 @@ idna==3.10
 psutil==6.0.0
 requests==2.32.3
 SQLAlchemy==2.0.35
-urllib3==1.26.9
+urllib3==2.2.3
