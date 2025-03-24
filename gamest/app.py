@@ -12,6 +12,7 @@ import webbrowser
 from collections import OrderedDict
 from typing import Tuple, Union, Dict
 
+import requests
 from tkinter import (Tk, Frame, Toplevel, Label, Entry, Button, Checkbutton,
                      Text, StringVar, IntVar, E, W, DISABLED, NORMAL, END,
                      ttk, messagebox, filedialog, scrolledtext, PhotoImage)
@@ -20,9 +21,9 @@ from sqlalchemy.sql import or_
 import pkg_resources
 
 import gamest_plugins
-from .db import App, UserApp, PlaySession, Session, DBConfig
+from .db import App, UserApp, PlaySession, Session, DBConfig, REMOTE_BASE_URL
 from .util import format_time
-from . import plugins, DATA_DIR
+from . import plugins, DATA_DIR, db
 
 if platform.system() == 'Windows':
     import ctypes
@@ -818,9 +819,20 @@ class Application(Frame):
                 self.rtlabel.config(fg='green')
                 self.started = datetime.datetime.now()
                 self.RUNNING = (self.RUNNING[0], Session.merge(self.RUNNING[1]))
-                self.play_session = PlaySession(
-                    user_app=self.RUNNING[1],
-                    started=self.started)
+                if db.IS_REMOTE:
+                    r = requests.post(REMOTE_BASE_URL + '/start',
+                                      json={'app_id': self.RUNNING[1].app_id,
+                                            'user_app_id': self.RUNNING[1].id})
+                    r.raise_for_status()
+                    d = r.json()
+                    self.play_session = PlaySession(
+                        id=d['play_session_id'],
+                        user_app=self.RUNNING[1],
+                        started=datetime.datetime.fromtimestamp(d['started']))
+                else:
+                    self.play_session = PlaySession(
+                        user_app=self.RUNNING[1],
+                        started=self.started)
                 Session.add(self.play_session)
                 Session.flush()
                 for plugin in self.session_plugins:
@@ -876,6 +888,12 @@ class Application(Frame):
                     elapsed = int((datetime.datetime.now() - self.started).total_seconds())
                     self.play_session.duration = elapsed
                     self.running_text.set("Last running: ")
+                    if db.IS_REMOTE:
+                        r = requests.post(REMOTE_BASE_URL + '/stop',
+                                          json={'play_session_id': self.play_session.id})
+                        r.raise_for_status()
+                        d = r.json()
+                        self.play_session.duration = d['duration']
                 except Exception:
                     logger.exception("Failure in not running branch")
                 finally:
@@ -896,6 +914,52 @@ class Application(Frame):
             Session.commit()
 
 
+def load_remote_db(base_url):
+    session = db.Session()
+    if session.query(db.App).count():
+        logger.error("Data exists in DB! No!")
+        raise ValueError("Tried to load data to non-empty DB.")
+    logger.error("Loading remote DB: %r.", base_url)
+    r = requests.get(base_url + '/fetch-remote-db', timeout=5)
+    r.raise_for_status()
+    d = r.json()
+    for a in d['apps']:
+        session.add(db.App(
+            id=a['id'],
+            name=a['name'],
+            disambiguation=a['disambiguation']))
+    for ua in d['user_apps']:
+        session.add(db.UserApp(
+            id=ua['id'],
+            app_id=ua['app_id'],
+            note=ua['note'],
+            path=ua['path'],
+            identifier_plugin=ua['identifier_plugin'],
+            identifier_data=ua['identifier_data'],
+            initial_runtime=ua['initial_runtime'],
+            window_text=ua['window_text']))
+    for s in d['play_sessions']:
+        session.add(db.PlaySession(
+            id=s['id'],
+            user_app_id=s['user_app_id'],
+            started=datetime.datetime.fromtimestamp(s['started']),
+            duration=s['duration'],
+            note=s['note']))
+    for s in d['settings']:
+        session.add(db.Settings(
+            id=s['id'],
+            owner=s['owner'],
+            key=s['key'],
+            value=s['value']))
+    session.flush()
+    logger.error('Done. DB now contains %r Apps, %r UserApps, and %r PlaySessions.',
+                 session.query(db.App).count(),
+                 session.query(db.UserApp).count(),
+                 session.query(db.PlaySession).count())
+    session.commit()
+
+
+
 def main():
     if DBConfig.getboolean('Application', 'debug', fallback=False):
         logging.getLogger().setLevel(logging.DEBUG)
@@ -912,6 +976,10 @@ def main():
         logger.info("Starting gamest %s", pkg_resources.get_distribution('gamest').version)
     except pkg_resources.DistributionNotFound:
         logger.info("Starting gamest (version not available)")
+
+    if db.IS_REMOTE:
+        logger.info("Starting in remote mode.")
+        load_remote_db(REMOTE_BASE_URL)
 
     global root
     global appli

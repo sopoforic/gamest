@@ -17,7 +17,14 @@ Base = declarative_base() # type: sqlalchemy.ext.declarative.api.Base
 
 DBPATH = os.path.join(DATA_DIR, 'gamest.db')
 
-engine = create_engine(r'sqlite:///{}'.format(DBPATH))
+IS_REMOTE = os.environ.get('GAMEST_REMOTE') == 'true'
+REMOTE_BASE_URL = os.environ.get('GAMEST_REMOTE_BASE_URL')
+
+if IS_REMOTE and REMOTE_BASE_URL:
+        engine = create_engine('sqlite:///:memory:')
+else:
+    engine = create_engine(r'sqlite:///{}'.format(DBPATH))
+
 Session = scoped_session(sessionmaker(bind=engine))
 
 class App(Base):
