@@ -2,7 +2,7 @@ import logging
 import os
 
 import sqlalchemy.ext.declarative
-from sqlalchemy import Column, Index, ForeignKey, Integer, Text, Boolean, DateTime
+from sqlalchemy import Column, Index, ForeignKey, Integer, Text, DateTime
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref, object_session
