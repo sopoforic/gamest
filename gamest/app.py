@@ -198,7 +198,7 @@ class AddBox(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = self.config.get('geometry', fallback='400x160')
+        geometry = self.config.get('geometry'+('-REMOTE' if db.IS_REMOTE else ''), fallback='400x160')
         win.geometry(geometry)
         win.grid_columnconfigure(0, weight=0)
         win.grid_columnconfigure(1, weight=1)
@@ -277,7 +277,7 @@ class AddTimeBox(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = self.config.get('geometry', fallback='400x120')
+        geometry = self.config.get('geometry'+('-REMOTE' if db.IS_REMOTE else ''), fallback='400x120')
         win.geometry(geometry)
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.grid_columnconfigure(0, weight=0)
@@ -345,7 +345,7 @@ class ManualSessionSelector(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = self.config.get('geometry', fallback='400x80')
+        geometry = self.config.get('geometry'+('-REMOTE' if db.IS_REMOTE else ''), fallback='400x80')
         win.geometry(geometry)
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.grid_columnconfigure(0, weight=0)
@@ -413,7 +413,7 @@ class ManualSession(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = self.config.get('geometry', fallback='400x80')
+        geometry = self.config.get('geometry'+('-REMOTE' if db.IS_REMOTE else ''), fallback='400x80')
         win.geometry(geometry)
         win.title("Manual Session")
 
@@ -446,7 +446,7 @@ class PickGame(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = self.config.get('geometry', fallback='400x80')
+        geometry = self.config.get('geometry'+('-REMOTE' if db.IS_REMOTE else ''), fallback='400x80')
         win.geometry(geometry)
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.grid_columnconfigure(0, weight=0)
@@ -505,7 +505,7 @@ class SessionNote(Frame):
     def createWidgets(self):
         win = Toplevel(self)
         self.win = win
-        geometry = self.config.get('geometry', fallback='600x400')
+        geometry = self.config.get('geometry'+('-REMOTE' if db.IS_REMOTE else ''), fallback='600x400')
         win.geometry(geometry)
         win.protocol("WM_DELETE_WINDOW", self.on_closing)
         win.title("Add note to play session")
@@ -635,7 +635,7 @@ class SettingsBox(Frame):
 
             self.win = Toplevel(self)
             self.win.title("Gamest Settings")
-            geometry = self.config.get('geometry', fallback=None)
+            geometry = self.config.get('geometry'+('-REMOTE' if db.IS_REMOTE else ''), fallback=None)
             if geometry:
                 self.win.geometry(geometry)
 
@@ -1072,7 +1072,7 @@ def main():
     global appli
     root = Tk()
     root.wm_title("Gamest")
-    geometry = DBConfig.get('Application', 'geometry', fallback='400x150')
+    geometry = DBConfig.get('Application', 'geometry'+('-REMOTE' if db.IS_REMOTE else ''), fallback='400x150')
     root.geometry(geometry)
 
     installed_plugins = {
