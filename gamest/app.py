@@ -246,7 +246,7 @@ class AddBox(Frame):
                 app,
                 identifier_plugin=self.plugin_entry.get(),
                 identifier_data=self.data_entry.get(),
-                notes=self.notes_entry.get() or None,
+                note=self.notes_entry.get() or None,
                 initial_runtime=(int(self.seconds_entry.get()) if self.seconds_entry.get() else 0),
                 window_text=self.title_entry.get() or None)
             Session.commit()
