@@ -237,22 +237,18 @@ class AddBox(Frame):
 
     def add_game(self):
         try:
-            user_app = UserApp()
             index = self.gamecombo.current()
-            if index == -1:
-                user_app.app = App(name=self.gamecombo.get())
-                logger.info("Adding new app: %s", user_app.app.name)
+            if index != -1:
+                app = Session.get(db.App, self.games[index][0])
             else:
-                user_app.app_id = self.games[index][0]
-            user_app.identifier_plugin = self.plugin_entry.get()
-            user_app.identifier_data = self.data_entry.get()
-            notes = self.notes_entry.get()
-            user_app.notes = notes if notes else None
-            seconds = self.seconds_entry.get()
-            user_app.initial_runtime = int(seconds) if seconds else 0
-            title = self.title_entry.get()
-            user_app.window_text = title if title else None
-            Session.add(user_app)
+                app = create_app(name=self.gamecombo.get())
+            user_app = create_user_app(
+                app,
+                identifier_plugin=self.plugin_entry.get(),
+                identifier_data=self.data_entry.get(),
+                notes=self.notes_entry.get() or None,
+                initial_runtime=(int(self.seconds_entry.get()) if self.seconds_entry.get() else 0),
+                window_text=self.title_entry.get() or None)
             Session.commit()
             logger.info("Added new userapp: %s", repr(user_app))
 
@@ -378,13 +374,7 @@ class ManualSessionSelector(Frame):
                         "A game must be selected.")
                 else:
                     app = Session.query(App).get(self.games[index][0])
-                    uapp = Session.query(UserApp).filter(
-                        UserApp.app == app,
-                        UserApp.identifier_plugin == 'manual_time').first()
-                    if not uapp:
-                        uapp = UserApp(app=app, identifier_plugin='manual_time', note=None)
-                        logger.info("Added new userapp for manual session: %s", repr(uapp))
-                        Session.add(uapp)
+                    uapp = begin_manual_session(app)
                     ManualSession(self.parent, uapp)
             else:
                 messagebox.showerror(
@@ -395,6 +385,15 @@ class ManualSessionSelector(Frame):
             Session.rollback()
         finally:
             self.on_closing()
+
+
+def begin_manual_session(app):
+    uapp = Session.query(UserApp).filter(
+        UserApp.app == app,
+        UserApp.identifier_plugin == 'manual_time').first()
+    if not uapp:
+        uapp = create_user_app(app, identifier_plugin='manual_time')
+    return uapp
 
 
 class ManualSession(Frame):
@@ -529,12 +528,24 @@ class SessionNote(Frame):
     def edit_note(self):
         try:
             Session.add(self.session)
-            self.session.note = self.note_text.get(1.0, END)
+            update_session_note(self.session, self.note_text.get(1.0, END))
             Session.commit()
         except Exception:
             logger.exception("Exception in edit_note")
         finally:
             self.on_closing()
+
+
+def update_session_note(play_session, note):
+    if db.IS_REMOTE:
+        if not play_session.id:
+            raise ValueError("Attempted to edit the note for a non-persisted session.")
+        r = requests.post(
+            REMOTE_BASE_URL + '/update-session-note',
+            json={'play_session_id': play_session.id,
+                  'note': note})
+        r.raise_for_status()
+    play_session.note = note
 
 
 class SettingsTab(Frame):
@@ -817,24 +828,9 @@ class Application(Frame):
                 logger.debug("self.RUNNING is not None")
                 self.manual_session_button.config(state=DISABLED)
                 self.rtlabel.config(fg='green')
-                self.started = datetime.datetime.now()
                 self.RUNNING = (self.RUNNING[0], Session.merge(self.RUNNING[1]))
-                if db.IS_REMOTE:
-                    r = requests.post(REMOTE_BASE_URL + '/start',
-                                      json={'app_id': self.RUNNING[1].app_id,
-                                            'user_app_id': self.RUNNING[1].id})
-                    r.raise_for_status()
-                    d = r.json()
-                    self.play_session = PlaySession(
-                        id=d['play_session_id'],
-                        user_app=self.RUNNING[1],
-                        started=datetime.datetime.fromtimestamp(d['started']))
-                else:
-                    self.play_session = PlaySession(
-                        user_app=self.RUNNING[1],
-                        started=self.started)
-                Session.add(self.play_session)
-                Session.flush()
+                self.play_session = begin_session(self.RUNNING[1].app_id, self.RUNNING[1].id)
+                self.started = self.play_session.started
                 for plugin in self.session_plugins:
                     try:
                         self.active_plugins.append(plugin(self))
@@ -875,7 +871,7 @@ class Application(Frame):
             if self.RUNNING[0].is_running():
                 try:
                     elapsed = int((datetime.datetime.now() - self.started).total_seconds())
-                    self.play_session.duration = elapsed
+                    update_session(self.play_session, elapsed)
                     self.note_button.config(state=NORMAL)
                     self.time_text.set(format_time(self.RUNNING[1].app.runtime))
                     self.elapsed_text.set(format_time(elapsed))
@@ -886,14 +882,8 @@ class Application(Frame):
                 try:
                     self.rtlabel.config(fg='black')
                     elapsed = int((datetime.datetime.now() - self.started).total_seconds())
-                    self.play_session.duration = elapsed
                     self.running_text.set("Last running: ")
-                    if db.IS_REMOTE:
-                        r = requests.post(REMOTE_BASE_URL + '/stop',
-                                          json={'play_session_id': self.play_session.id})
-                        r.raise_for_status()
-                        d = r.json()
-                        self.play_session.duration = d['duration']
+                    end_session(self.play_session, elapsed)
                 except Exception:
                     logger.exception("Failure in not running branch")
                 finally:
@@ -913,6 +903,103 @@ class Application(Frame):
                 root.after(5000, self.run)
             Session.commit()
 
+
+def begin_session(app_id, user_app_id):
+    if db.IS_REMOTE:
+        r = requests.post(
+            REMOTE_BASE_URL + '/start',
+            json={'app_id': app_id,
+                  'user_app_id': user_app_id})
+        r.raise_for_status()
+        d = r.json()
+        play_session = PlaySession(
+            id=d['play_session_id'],
+            user_app_id=user_app_id,
+            started=datetime.datetime.fromtimestamp(d['started']))
+    else:
+        play_session = PlaySession(
+            user_app_id=user_app_id,
+            started=datetime.datetime.now())
+    Session.add(play_session)
+    Session.flush()
+    return play_session
+
+
+def update_session(play_session, elapsed):
+    play_session.duration = elapsed
+
+
+def end_session(play_session, elapsed):
+    if db.IS_REMOTE:
+        r = requests.post(
+            REMOTE_BASE_URL + '/stop',
+            json={'play_session_id': self.play_session.id})
+        r.raise_for_status()
+        d = r.json()
+        play_session.duration = d['duration']
+    else:
+        play_session.duration = elapsed
+
+
+def create_app(name, disambiguation=None):
+    if db.IS_REMOTE:
+        r = requests.post(
+            REMOTE_BASE_URL + '/create-app',
+            json={
+                'name': name,
+                'disambiguation': disambiguation,
+            })
+        r.raise_for_status()
+        d = r.json()
+        app = db.App(
+            id=d['app_id'],
+            name=name,
+            disambiguation=disambiguation)
+    else:
+        app = db.App(
+            name=name,
+            disambiguation=disambiguation)
+    Session.add(app)
+    Session.flush()
+    return app
+
+
+def create_user_app(app, note=None, path=None, identifier_plugin=None, identifier_data=None, initial_runtime=0, window_text=None):
+    if db.IS_REMOTE:
+        r = requests.post(
+            REMOTE_BASE_URL + '/create-user-app',
+            json={
+                'app_id': app.id,
+                'note': note,
+                'path': path,
+                'identifier_plugin': identifier_plugin,
+                'identifier_data': identifier_data,
+                'initial_runtime': initial_runtime,
+                'window_text': window_text,
+            })
+        r.raise_for_status()
+        d = r.json()
+        uapp = db.UserApp(
+            id=d['user_app_id'],
+            app=app,
+            note=note,
+            path=path,
+            identifier_plugin=identifier_plugin,
+            identifier_data=identifier_data,
+            initial_runtime=initial_runtime,
+            window_text=window_text)
+    else:
+        uapp = db.UserApp(
+            app=app,
+            note=note,
+            path=path,
+            identifier_plugin=identifier_plugin,
+            identifier_data=identifier_data,
+            initial_runtime=initial_runtime,
+            window_text=window_text)
+    Session.add(uapp)
+    Session.flush()
+    return uapp
 
 def load_remote_db(base_url):
     session = db.Session()
