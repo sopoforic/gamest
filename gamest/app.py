@@ -933,7 +933,7 @@ def end_session(play_session, elapsed):
     if db.IS_REMOTE:
         r = requests.post(
             REMOTE_BASE_URL + '/stop',
-            json={'play_session_id': self.play_session.id})
+            json={'play_session_id': play_session.id})
         r.raise_for_status()
         d = r.json()
         play_session.duration = d['duration']
