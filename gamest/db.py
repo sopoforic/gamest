@@ -2,7 +2,7 @@ import logging
 import os
 
 import sqlalchemy.ext.declarative
-from sqlalchemy import Column, Index, ForeignKey, Integer, Text, DateTime
+from sqlalchemy import Column, Index, ForeignKey, Integer, Text, DateTime, text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref, object_session
@@ -142,27 +142,27 @@ Base.metadata.create_all(engine)
 def schema_updates():
     """Update the DB schema."""
     try:
-        Session.execute('ALTER TABLE user_app ADD COLUMN identifier_plugin VARCHAR')
+        Session.execute(text('ALTER TABLE user_app ADD COLUMN identifier_plugin VARCHAR'))
         logger.info("Added 'identifier_plugin' column to table 'user_app'")
     except OperationalError:
         logger.debug("'identifier_plugin' column already present on table 'user_app'")
     try:
-        Session.execute('ALTER TABLE user_app ADD COLUMN identifier_data VARCHAR')
+        Session.execute(text('ALTER TABLE user_app ADD COLUMN identifier_data VARCHAR'))
         logger.info("Added 'identifier_data' column to table 'user_app'")
     except OperationalError:
         logger.debug("'identifier_data' column already present on table 'user_app'")
     try:
-        Session.execute('ALTER TABLE app DROP COLUMN window_text')
+        Session.execute(text('ALTER TABLE app DROP COLUMN window_text'))
         logger.info("Removed 'window_text' column from table 'app'")
     except OperationalError:
         logger.debug("'window_text' column already removed from table 'app'")
     try:
-        Session.execute('ALTER TABLE app DROP COLUMN use_window_text')
+        Session.execute(text('ALTER TABLE app DROP COLUMN use_window_text'))
         logger.info("Removed 'use_window_text' column from table 'app'")
     except OperationalError:
         logger.debug("'use_window_text' column already removed from table 'app'")
     try:
-        Session.execute('ALTER TABLE app DROP COLUMN default_path')
+        Session.execute(text('ALTER TABLE app DROP COLUMN default_path'))
         logger.info("Removed 'default_path' column from table 'app'")
     except OperationalError:
         logger.debug("'default_path' column already removed from table 'app'")
