@@ -870,7 +870,7 @@ class Application(Frame):
         try:
             if self.RUNNING[0].is_running():
                 try:
-                    elapsed = int((datetime.datetime.now() - self.started).total_seconds())
+                    elapsed = int((datetime.datetime.now(tz=datetime.UTC) - self.started.replace(tzinfo=datetime.UTC)).total_seconds())
                     update_session(self.play_session, elapsed)
                     self.note_button.config(state=NORMAL)
                     self.time_text.set(format_time(self.RUNNING[1].app.runtime))
@@ -881,7 +881,7 @@ class Application(Frame):
                 self.RUNNING = None
                 try:
                     self.rtlabel.config(fg='black')
-                    elapsed = int((datetime.datetime.now() - self.started).total_seconds())
+                    elapsed = int((datetime.datetime.now(tz=datetime.UTC) - self.started.replace(tzinfo=datetime.UTC)).total_seconds())
                     self.running_text.set("Last running: ")
                     end_session(self.play_session, elapsed)
                 except Exception:
@@ -919,7 +919,7 @@ def begin_session(app_id, user_app_id):
     else:
         play_session = PlaySession(
             user_app_id=user_app_id,
-            started=datetime.datetime.now())
+            started=datetime.datetime.now(tz=datetime.UTC))
     Session.add(play_session)
     Session.flush()
     return play_session
@@ -1095,7 +1095,7 @@ def main():
                 logger.debug("appli.RUNNING is not None")
                 try:
                     if appli.RUNNING[0].is_running():
-                        elapsed = int((datetime.datetime.now() - appli.started).total_seconds())
+                        elapsed = int((datetime.datetime.now(tz=datetime.UTC) - appli.started.replace(tzinfo=datetime.UTC)).total_seconds())
                         appli.play_session.duration = elapsed
                         Session.commit()
                 except Exception:

@@ -1,3 +1,4 @@
+import datetime
 import logging
 import os
 
@@ -166,6 +167,21 @@ def schema_updates():
         logger.info("Removed 'default_path' column from table 'app'")
     except OperationalError:
         logger.debug("'default_path' column already removed from table 'app'")
+
+    db_version = Session.query(Settings.value).filter(
+            Settings.owner == 'DB',
+            Settings.key == 'version').\
+        scalar()
+    if not db_version:
+        # convert old timestamps to UTC
+        play_sessions = Session.query(PlaySession).filter(
+            ~PlaySession.user_app.has(
+                UserApp.identifier_plugin == 'gamest_web'))
+        for ps in play_sessions:
+            ps.started = ps.started.astimezone(datetime.timezone.utc)
+        Session.add(Settings(owner='DB', key='version', value='1'))
+
+    Session.commit()
 
 schema_updates()
 
