@@ -1032,6 +1032,7 @@ def load_remote_db(base_url):
             started=datetime.datetime.fromtimestamp(s['started']),
             duration=s['duration'],
             note=s['note']))
+    session.query(db.Settings).delete()
     for s in d['settings']:
         session.add(db.Settings(
             id=s['id'],
