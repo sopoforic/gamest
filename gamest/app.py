@@ -915,7 +915,7 @@ def begin_session(app_id, user_app_id):
         play_session = PlaySession(
             id=d['play_session_id'],
             user_app_id=user_app_id,
-            started=datetime.datetime.fromtimestamp(d['started']))
+            started=datetime.datetime.fromtimestamp(d['started']).astimezone(datetime.UTC))
     else:
         play_session = PlaySession(
             user_app_id=user_app_id,
