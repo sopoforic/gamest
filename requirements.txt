@@ -1,5 +1,5 @@
 appdirs==1.4.4
-certifi==2023.7.22
+certifi==2025.7.14
 chardet==5.0.0
 idna==3.3
 psutil==5.9.1
