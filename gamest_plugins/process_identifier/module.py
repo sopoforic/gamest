@@ -1,5 +1,6 @@
 import json
 import re
+from collections import defaultdict
 
 import getpass
 import psutil
@@ -75,7 +76,7 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
         super().__init__(application)
 
         self.username = getpass.getuser()
-        self._uas = {}
+        self._uas = defaultdict(list)
         trash_regex.extend(r for r in self.config.getlist('trash_names') if r)
 
         def update_trash_names(event):
@@ -88,9 +89,13 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
     @property
     def uas(self):
         if not self._uas:
-            self._uas = {ua.id: json.loads(ua.identifier_data)
-                         for ua in db.Session.query(db.UserApp).filter(
-                                 db.UserApp.identifier_plugin == self.__class__.__name__)}
+            q = db.Session.query(db.UserApp).filter(
+                db.UserApp.identifier_plugin == self.__class__.__name__)
+            self._uas = defaultdict(list)
+            for ua in q:
+                data = json.loads(ua.identifier_data)
+                if exe := data.get('exe'):
+                    self._uas[exe].append((ua.id, data.get('cmdline')))
 
         return self._uas
 
@@ -146,10 +151,9 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
         candidates.sort(key=lambda c: c.info['create_time'])
 
         for c in candidates:
-            for ua_id, data in self.uas.items():
-                if c.info['exe'] == data.get('exe'):
-                    if (not data.get('cmdline') or
-                            ' '.join(c.info['cmdline']).startswith(data.get('cmdline'))):
+            if uas := self.uas.get(c.info['exe']):
+                for ua_id, cmdline in uas:
+                    if not cmdline or ' '.join(c.info['cmdline']).startswith(cmdline):
                         return (c, db.Session.query(db.UserApp).get(ua_id))
 
         return None
