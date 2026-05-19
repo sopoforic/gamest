@@ -21,10 +21,12 @@ DBPATH = os.path.join(DATA_DIR, 'gamest.db')
 IS_REMOTE = os.environ.get('GAMEST_REMOTE') == 'true'
 REMOTE_BASE_URL = os.environ.get('GAMEST_REMOTE_BASE_URL')
 
+_db_path = os.environ.get('GAMEST_DB_PATH', DBPATH)
+
 if IS_REMOTE and REMOTE_BASE_URL:
-        engine = create_engine('sqlite:///:memory:')
+    engine = create_engine('sqlite:///:memory:')
 else:
-    engine = create_engine(r'sqlite:///{}'.format(DBPATH))
+    engine = create_engine('sqlite:///{}'.format(_db_path))
 
 Session = scoped_session(sessionmaker(bind=engine))
 
@@ -67,7 +69,7 @@ class UserApp(Base):
 
     @property
     def runtime(self):
-        added = Session.query(func.sum(PlaySession.duration)).filter(
+        added = object_session(self).query(func.sum(PlaySession.duration)).filter(
             PlaySession.user_app == self).scalar()
         if not added:
             added = 0
