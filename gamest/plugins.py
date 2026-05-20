@@ -60,7 +60,7 @@ class GameReporterPlugin(GamestSessionPlugin):
 
     @property
     def user_app_ids(self):
-        return self.config.getlist('user_app_ids', type=int)
+        return list(self.config.getlist('user_app_ids', type=int))
 
     @property
     def send_begin(self):
