@@ -114,24 +114,35 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
         return d
 
     def candidates(self):
-        procs = [p
-                 for p in psutil.process_iter(['name', 'username', 'exe', 'cmdline', 'create_time'])
-                 if p.info['username'].endswith(self.username)
-                 and p.info['name'] not in trash_names
-                 and not any(re.match(t, p.info['name']) for t in trash_regex)]
+        survivors = [p for p in psutil.process_iter(['name'])
+                     if p.info['name'] not in trash_names
+                     and not any(re.match(t, p.info['name']) for t in trash_regex)]
 
-        procs.sort(key=lambda p: p.info['create_time'], reverse=True)
+        procs = []
+        for p in survivors:
+            try:
+                with p.oneshot():
+                    username = p.username()
+                    exe = p.exe()
+                    cmdline = p.cmdline()
+                    create_time = p.create_time()
+                if username.endswith(self.username):
+                    procs.append((p, exe, cmdline, create_time))
+            except Exception:
+                pass
+
+        procs.sort(key=lambda x: x[3], reverse=True)
 
         candidates = []
-        for p in procs:
+        for p, exe, cmdline, _ in procs:
             try:
                 candidates.append(db.UserApp(
                     note=p.info['name'],
                     identifier_plugin=self.__class__.__name__,
                     identifier_data=json.dumps(
                         {
-                            'exe': p.info['exe'],
-                            'cmdline': ' '.join(p.info['cmdline']).rstrip() if p.info['cmdline'] else '',
+                            'exe': exe,
+                            'cmdline': ' '.join(cmdline).rstrip() if cmdline else '',
                         }
                     )
                 ))
@@ -141,20 +152,26 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
         return candidates
 
     def identify_game(self):
-        candidates = [p
-                      for p in psutil.process_iter(['name', 'username', 'exe', 'cmdline', 'create_time'])
-                      if p.info['username'].endswith(self.username)
-                      and p.info['name'] not in trash_names
-                      and not any(re.match(t, p.info['name']) for t in trash_regex)]
+        survivors = [p for p in psutil.process_iter(['name'])
+                     if p.info['name'] not in trash_names
+                     and not any(re.match(t, p.info['name']) for t in trash_regex)]
 
-        # This way we will catch the oldest process first.
-        candidates.sort(key=lambda c: c.info['create_time'])
+        candidates = []
+        for p in survivors:
+            try:
+                with p.oneshot():
+                    candidates.append((p, p.exe(), p.cmdline(), p.create_time()))
+            except Exception:
+                continue
 
-        for c in candidates:
-            if uas := self.uas.get(c.info['exe']):
-                for ua_id, cmdline in uas:
-                    if not cmdline or ' '.join(c.info['cmdline']).startswith(cmdline):
-                        return (c, db.Session.query(db.UserApp).get(ua_id))
+        # Oldest process first.
+        candidates.sort(key=lambda x: x[3])
+
+        for p, exe, cmdline, _ in candidates:
+            if uas := self.uas.get(exe):
+                for ua_id, match_cmdline in uas:
+                    if not match_cmdline or ' '.join(cmdline).startswith(match_cmdline):
+                        return (p, db.Session.query(db.UserApp).get(ua_id))
 
         return None
 
