@@ -1,5 +1,22 @@
 # Changelog
 
+## [4.1.10] - 2026-05-20
+
+### Fixed
+
+* Plugin subpackages were missing from the PyPI distribution due to a packaging oversight. Switched to `find_namespace_packages` so they are correctly included.
+
+## [4.1.9] - 2026-05-20
+
+### Added
+
+* Basic test suite.
+* DB path can now be overridden via the `GAMEST_DB` environment variable.
+
+### Changed
+
+* Updated dependencies (pinned SQLAlchemy ~=1.4, psutil ~=7.2). On Windows 11, the previous version of psutil caused gamest to freeze for an extended period every few seconds while listing processes; this update resolves that.
+
 ## [4.0.1] - 2022-03-07
 
 ### Changed
@@ -206,7 +223,9 @@
 * The gamest_plugins namespace package should work properly, now.
 * Restarting as administrator should work correctly, now.
 
-[Unreleased]: https://github.com/sopoforic/gamest/compare/v4.0.1...HEAD
+[Unreleased]: https://github.com/sopoforic/gamest/compare/v4.1.10...HEAD
+[4.1.10]: https://github.com/sopoforic/gamest/compare/v4.1.9...v4.1.10
+[4.1.9]: https://github.com/sopoforic/gamest/compare/v4.0.1...v4.1.9
 [4.0.1]: https://github.com/sopoforic/gamest/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/sopoforic/gamest/compare/v3.0.4...v4.0.0
 [3.0.4]: https://github.com/sopoforic/gamest/compare/v3.0.3...v3.0.4

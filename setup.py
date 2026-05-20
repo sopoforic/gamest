@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_namespace_packages
 
 with open('README.md', 'r') as fh:
     long_description = fh.read()
@@ -14,7 +14,7 @@ setup(
     package_data={
         "": ["icon.png"],
     },
-    packages=['gamest', 'gamest_plugins'],
+    packages=find_namespace_packages(include=['gamest', 'gamest.*', 'gamest_plugins', 'gamest_plugins.*']),
     install_requires=['sqlalchemy~=1.4', 'psutil~=7.2', 'requests', 'appdirs'],
     setup_requires=['setuptools_scm'],
     use_scm_version=True,
