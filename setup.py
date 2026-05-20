@@ -15,7 +15,7 @@ setup(
         "": ["icon.png"],
     },
     packages=['gamest', 'gamest_plugins'],
-    install_requires=['sqlalchemy', 'psutil>=5.7.0', 'requests', 'appdirs'],
+    install_requires=['sqlalchemy~=1.4', 'psutil~=7.2', 'requests', 'appdirs'],
     setup_requires=['setuptools_scm'],
     use_scm_version=True,
     entry_points={
