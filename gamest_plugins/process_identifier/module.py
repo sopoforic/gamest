@@ -77,6 +77,7 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
 
         self.username = getpass.getuser()
         self._uas = defaultdict(list)
+        self._checked_procs = set()
         trash_regex.extend(r for r in self.config.getlist('trash_names') if r)
 
         def update_trash_names(event):
@@ -113,13 +114,14 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
 
         return d
 
-    def candidates(self):
-        survivors = [p for p in psutil.process_iter(['name'])
-                     if p.info['name'] not in trash_names
-                     and not any(re.match(t, p.info['name']) for t in trash_regex)]
+    def _iter_survivors(self):
+        return (p for p in psutil.process_iter(['name', 'create_time'])
+                if p.info['name'] not in trash_names
+                and not any(re.match(t, p.info['name']) for t in trash_regex))
 
+    def candidates(self):
         procs = []
-        for p in survivors:
+        for p in self._iter_survivors():
             try:
                 with p.oneshot():
                     username = p.username()
@@ -152,28 +154,32 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
         return candidates
 
     def identify_game(self):
-        survivors = [p for p in psutil.process_iter(['name'])
-                     if p.info['name'] not in trash_names
-                     and not any(re.match(t, p.info['name']) for t in trash_regex)]
+        survivors = {(p.pid, p.info['create_time']): p for p in self._iter_survivors()}
+
+        self._checked_procs &= survivors.keys()
 
         candidates = []
-        for p in survivors:
+        for key, p in survivors.items():
+            if key in self._checked_procs:
+                continue
             try:
                 with p.oneshot():
-                    candidates.append((p, p.exe(), p.cmdline(), p.create_time()))
+                    candidates.append((p, p.exe(), p.cmdline()))
             except Exception:
                 continue
 
         # Oldest process first.
-        candidates.sort(key=lambda x: x[3])
+        candidates.sort(key=lambda x: x[0].info['create_time'])
 
-        for p, exe, cmdline, _ in candidates:
+        for p, exe, cmdline in candidates:
             if uas := self.uas.get(exe):
                 for ua_id, match_cmdline in uas:
                     if not match_cmdline or ' '.join(cmdline).startswith(match_cmdline):
                         return (p, db.Session.query(db.UserApp).get(ua_id))
+            self._checked_procs.add((p.pid, p.info['create_time']))
 
         return None
 
     def clear_cache(self):
         self._uas = {}
+        self._checked_procs = set()
