@@ -6,7 +6,6 @@ good-names = logger,createWidgets,lParam
 
 [TYPECHECK]
 generated-members =
-    query
     add
     commit
     rollback

@@ -5,6 +5,8 @@ from collections import defaultdict
 import getpass
 import psutil
 
+from sqlalchemy import select
+
 from gamest import db
 from gamest.plugins import IdentifierPlugin
 
@@ -90,10 +92,11 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
     @property
     def uas(self):
         if not self._uas:
-            q = db.Session.query(db.UserApp).filter(
-                db.UserApp.identifier_plugin == self.__class__.__name__)
+            q = select(db.UserApp).\
+                where(db.UserApp.identifier_plugin == self.__class__.__name__)
+            uas = db.Session.scalars(q)
             self._uas = defaultdict(list)
-            for ua in q:
+            for ua in uas:
                 data = json.loads(ua.identifier_data)
                 if exe := data.get('exe'):
                     self._uas[exe].append((ua.id, data.get('cmdline')))
@@ -181,7 +184,7 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
             if uas := self.uas.get(exe):
                 for ua_id, match_cmdline in uas:
                     if not match_cmdline or ' '.join(cmdline).startswith(match_cmdline):
-                        return (p, db.Session.query(db.UserApp).get(ua_id))
+                        return (p, db.Session.get(db.UserApp, ua_id))
             self._checked_procs.add((p.pid, p.info['create_time']))
 
         return None
