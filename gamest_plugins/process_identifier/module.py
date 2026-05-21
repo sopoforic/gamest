@@ -165,6 +165,8 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
                 continue
             try:
                 with p.oneshot():
+                    if not p.username().endswith(self.username):
+                        continue
                     candidates.append((p, p.exe(), p.cmdline()))
             except Exception:
                 continue
