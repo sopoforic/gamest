@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [4.1.12] - 2026-05-21
+
 ### Changed
 
 * Upgraded from SQLAlchemy 1.4 to 2.x.
@@ -242,7 +244,8 @@
 * The gamest_plugins namespace package should work properly, now.
 * Restarting as administrator should work correctly, now.
 
-[Unreleased]: https://github.com/sopoforic/gamest/compare/v4.1.11...HEAD
+[Unreleased]: https://github.com/sopoforic/gamest/compare/v4.1.12...HEAD
+[4.1.12]: https://github.com/sopoforic/gamest/compare/v4.1.11...v4.1.12
 [4.1.11]: https://github.com/sopoforic/gamest/compare/v4.1.10...v4.1.11
 [4.1.10]: https://github.com/sopoforic/gamest/compare/v4.1.9...v4.1.10
 [4.1.9]: https://github.com/sopoforic/gamest/compare/v4.0.1...v4.1.9
