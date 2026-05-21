@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+* Slow operations in `identify_game` and candidate listing are now deferred, reducing unnecessary work when no match is found early.
+* Already-checked processes are cached so they are not re-examined unless the process list changes.
+
+### Fixed
+
+* Guard against null fields returned by psutil when iterating processes.
+
 ## [4.1.10] - 2026-05-20
 
 ### Fixed
