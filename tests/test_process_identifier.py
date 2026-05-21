@@ -9,13 +9,18 @@ from gamest_plugins.process_identifier.module import ProcessIdentifierPlugin
 
 def make_proc(name, username='testuser', exe='/usr/bin/game', cmdline=None, create_time=0.0):
     p = MagicMock()
+    cmdline = cmdline if cmdline is not None else []
     p.info = {
         'name': name,
         'username': username,
         'exe': exe,
-        'cmdline': cmdline if cmdline is not None else [],
+        'cmdline': cmdline,
         'create_time': create_time,
     }
+    p.username.return_value = username
+    p.exe.return_value = exe
+    p.cmdline.return_value = cmdline
+    p.create_time.return_value = create_time
     return p
 
 
