@@ -16,6 +16,7 @@ import requests
 from tkinter import (Tk, Frame, Toplevel, Label, Entry, Button, Checkbutton,
                      Text, StringVar, IntVar, E, W, DISABLED, NORMAL, END,
                      ttk, messagebox, filedialog, scrolledtext, PhotoImage)
+from sqlalchemy import select, delete, func
 from sqlalchemy.sql import or_
 
 import pkg_resources
@@ -52,11 +53,12 @@ class FakeProcess:
 
 def generate_report():
     """Generate an HTML game report and return it as a string."""
-    apps = list(Session.query(App).
-                filter(App.user_apps.any(or_(
-                    UserApp.play_sessions.any(),
-                    UserApp.initial_runtime > 0))).
-                order_by(App.name).all())
+    apps = Session.scalars(
+        select(App)
+        .where(App.user_apps.any(or_(
+            UserApp.play_sessions.any(),
+            UserApp.initial_runtime > 0)))
+        .order_by(App.name)).all()
     html = """
 <!DOCTYPE html>
 <head>
@@ -204,7 +206,7 @@ class AddBox(Frame):
         win.grid_columnconfigure(1, weight=1)
         win.title("Add Game")
 
-        self.games = [(g.id, g.name) for g in Session.query(App).order_by(App.name)]
+        self.games = [(g.id, g.name) for g in Session.scalars(select(App).order_by(App.name))]
         self.gamecombo = ttk.Combobox(win, values=[g[1] for g in self.games])
         if self.game:
             self.gamecombo.set(self.game)
@@ -284,7 +286,7 @@ class AddTimeBox(Frame):
         win.grid_columnconfigure(1, weight=1)
         win.title("Add Time")
 
-        self.games = [(g.id, g.name) for g in Session.query(App).order_by(App.name)]
+        self.games = [(g.id, g.name) for g in Session.scalars(select(App).order_by(App.name))]
         self.gamecombo = SearchableCombobox(win, values=[g[1] for g in self.games])
 
         Label(win, text="Game: ").grid()
@@ -308,11 +310,12 @@ class AddTimeBox(Frame):
                     "No game selected",
                     "A game must be selected.")
             else:
-                app = Session.query(App).get(self.games[index][0])
+                app = Session.get(App, self.games[index][0])
 
-                user_app = Session.query(UserApp).filter(
-                    UserApp.app == app,
-                    UserApp.identifier_plugin == 'manual_time').first()
+                user_app = Session.scalars(
+                    select(UserApp).where(
+                        UserApp.app == app,
+                        UserApp.identifier_plugin == 'manual_time')).first()
                 if not user_app:
                     user_app = UserApp(
                         app=app,
@@ -352,7 +355,7 @@ class ManualSessionSelector(Frame):
         win.grid_columnconfigure(1, weight=1)
         win.title("Start Manual Session")
 
-        self.games = [(g.id, g.name) for g in Session.query(App).order_by(App.name)]
+        self.games = [(g.id, g.name) for g in Session.scalars(select(App).order_by(App.name))]
         self.gamecombo = SearchableCombobox(win, values=[g[1] for g in self.games])
 
         Label(win, text="Game: ").grid()
@@ -373,7 +376,7 @@ class ManualSessionSelector(Frame):
                         "No game selected",
                         "A game must be selected.")
                 else:
-                    app = Session.query(App).get(self.games[index][0])
+                    app = Session.get(App, self.games[index][0])
                     uapp = begin_manual_session(app)
                     ManualSession(self.parent, uapp)
             else:
@@ -388,9 +391,10 @@ class ManualSessionSelector(Frame):
 
 
 def begin_manual_session(app):
-    uapp = Session.query(UserApp).filter(
-        UserApp.app == app,
-        UserApp.identifier_plugin == 'manual_time').first()
+    uapp = Session.scalars(
+        select(UserApp).where(
+            UserApp.app == app,
+            UserApp.identifier_plugin == 'manual_time')).first()
     if not uapp:
         uapp = create_user_app(app, identifier_plugin='manual_time')
     return uapp
@@ -1003,7 +1007,7 @@ def create_user_app(app, note=None, path=None, identifier_plugin=None, identifie
 
 def load_remote_db(base_url):
     session = db.Session()
-    if session.query(db.App).count():
+    if session.scalar(select(func.count()).select_from(db.App)):
         logger.error("Data exists in DB! No!")
         raise ValueError("Tried to load data to non-empty DB.")
     logger.error("Loading remote DB: %r.", base_url)
@@ -1032,7 +1036,7 @@ def load_remote_db(base_url):
             started=datetime.datetime.fromtimestamp(s['started']),
             duration=s['duration'],
             note=s['note']))
-    session.query(db.Settings).delete()
+    session.execute(delete(db.Settings))
     for s in d['settings']:
         session.add(db.Settings(
             id=s['id'],
@@ -1041,9 +1045,9 @@ def load_remote_db(base_url):
             value=s['value']))
     session.flush()
     logger.error('Done. DB now contains %r Apps, %r UserApps, and %r PlaySessions.',
-                 session.query(db.App).count(),
-                 session.query(db.UserApp).count(),
-                 session.query(db.PlaySession).count())
+                 session.scalar(select(func.count()).select_from(db.App)),
+                 session.scalar(select(func.count()).select_from(db.UserApp)),
+                 session.scalar(select(func.count()).select_from(db.PlaySession)))
     session.commit()
 
 

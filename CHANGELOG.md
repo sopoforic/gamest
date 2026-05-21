@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+* Upgraded from SQLAlchemy 1.4 to 2.x.
+
 ## [4.1.11] - 2026-05-20
 
 ### Changed

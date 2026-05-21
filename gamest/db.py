@@ -2,12 +2,9 @@ import datetime
 import logging
 import os
 
-import sqlalchemy.ext.declarative
-from sqlalchemy import Column, Index, ForeignKey, Integer, Text, DateTime, text
+from sqlalchemy import Column, Index, ForeignKey, Integer, Text, DateTime, text, select, delete, create_engine
 from sqlalchemy.exc import OperationalError
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref, object_session
-from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, scoped_session, relationship, backref, object_session, declarative_base
 from sqlalchemy.sql import func
 
 from . import DATA_DIR
@@ -28,7 +25,7 @@ if IS_REMOTE and REMOTE_BASE_URL:
 else:
     engine = create_engine('sqlite:///{}'.format(_db_path))
 
-Session = scoped_session(sessionmaker(bind=engine))
+Session = scoped_session(sessionmaker(engine))
 
 class App(Base):
     __tablename__ = 'app'
@@ -69,8 +66,8 @@ class UserApp(Base):
 
     @property
     def runtime(self):
-        added = object_session(self).query(func.sum(PlaySession.duration)).filter(
-            PlaySession.user_app == self).scalar()
+        added = object_session(self).scalar(
+            select(func.sum(PlaySession.duration)).where(PlaySession.user_app == self))
         if not added:
             added = 0
         return self.initial_runtime + added
@@ -89,7 +86,7 @@ class PlaySession(Base):
     user_app_id = Column(Integer, ForeignKey('user_app.id'), nullable=False, index=True)
     user_app = relationship(
         'UserApp',
-        backref=backref('play_sessions', order_by='PlaySession.started.asc()'))
+        backref=backref('play_sessions', order_by=lambda: PlaySession.started.asc()))
 
     started = Column(DateTime, nullable=False, default=func.now(), index=True)
     duration = Column(Integer, nullable=False, default=0)
@@ -116,7 +113,7 @@ class StatusUpdate(Base):
 
     play_session = relationship(
         'PlaySession',
-        backref=backref('status_updates', order_by='StatusUpdate.timestamp.asc()'))
+        backref=backref('status_updates', order_by=lambda: StatusUpdate.timestamp.asc()))
 
     def __repr__(self):
         return "StatusUpdate(id={}, play_session_id={}, timestamp={!r})".format(
@@ -170,15 +167,14 @@ def schema_updates():
     except OperationalError:
         logger.debug("'default_path' column already removed from table 'app'")
 
-    db_version = Session.query(Settings.value).filter(
-            Settings.owner == 'DB',
-            Settings.key == 'version').\
-        scalar()
+    db_version = Session.scalar(
+        select(Settings.value)
+        .where(Settings.owner == 'DB', Settings.key == 'version'))
     if not db_version:
         # convert old timestamps to UTC
-        play_sessions = Session.query(PlaySession).filter(
-            ~PlaySession.user_app.has(
-                UserApp.identifier_plugin == 'gamest_web'))
+        play_sessions = Session.scalars(
+            select(PlaySession).where(
+                ~PlaySession.user_app.has(UserApp.identifier_plugin == 'gamest_web')))
         for ps in play_sessions:
             ps.started = ps.started.astimezone(datetime.timezone.utc)
         Session.add(Settings(owner='DB', key='version', value='1'))
@@ -198,13 +194,11 @@ class DBConfig:
 
     @staticmethod
     def static_get(owner, key, *, type=lambda x: x, fallback='NO FALLBACK'):
-        value = Session.query(Settings.value).\
-            filter(
-                Settings.owner == owner,
-                Settings.key == key).\
-            order_by(Settings.id.asc()).\
-            limit(1).\
-            scalar()
+        value = Session.scalar(
+            select(Settings.value)
+            .where(Settings.owner == owner, Settings.key == key)
+            .order_by(Settings.id.asc())
+            .limit(1))
         if value is None:
             if fallback == 'NO FALLBACK':
                 raise KeyError
@@ -219,14 +213,13 @@ class DBConfig:
 
     @staticmethod
     def static_getlist(owner, key, *, type=lambda x: x):
-        values = Session.query(Settings.value).\
-            filter(
-                Settings.owner == owner,
-                Settings.key == key).\
-            order_by(Settings.id.asc())
+        values = Session.scalars(
+            select(Settings.value)
+            .where(Settings.owner == owner, Settings.key == key)
+            .order_by(Settings.id.asc()))
         for value in values:
             try:
-                yield type(value[0])
+                yield type(value)
             except Exception:
                 continue
 
@@ -238,13 +231,11 @@ class DBConfig:
 
     @staticmethod
     def static_getboolean(owner, key, *, fallback='NO FALLBACK'):
-        value = Session.query(Settings.value).\
-            filter(
-                Settings.owner == owner,
-                Settings.key == key).\
-            order_by(Settings.id.asc()).\
-            limit(1).\
-            scalar()
+        value = Session.scalar(
+            select(Settings.value)
+            .where(Settings.owner == owner, Settings.key == key)
+            .order_by(Settings.id.asc())
+            .limit(1))
         if value is None:
             if fallback == 'NO FALLBACK':
                 raise KeyError
@@ -265,16 +256,13 @@ class DBConfig:
     @staticmethod
     def static_set(owner, key, value, append=False):
         logger.debug("Setting %s.%s to %r (append=%r)", owner, key, value, append)
-        settings = Session.query(Settings).\
-            filter(
-                Settings.owner == owner,
-                Settings.key == key)
-        if not append and settings.count() > 1:
+        settings_q = select(Settings).where(Settings.owner == owner, Settings.key == key)
+        if not append and Session.scalar(select(func.count()).select_from(settings_q.subquery())) > 1:
             raise ValueError("Cannot replace settings list.")
         if append:
             Session.add(Settings(owner=owner, key=key, value=value))
         else:
-            settings = settings.first()
+            settings = Session.scalars(settings_q.limit(1)).first()
             if settings:
                 settings.value = value
             else:
@@ -287,11 +275,8 @@ class DBConfig:
 
     @staticmethod
     def static_delete(owner, key):
-        Session.query(Settings).\
-            filter(
-                Settings.owner == owner,
-                Settings.key == key).\
-            delete()
+        Session.execute(
+            delete(Settings).where(Settings.owner == owner, Settings.key == key))
 
     delete = static_delete
 
