@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [4.1.11] - 2026-05-20
+
 ### Changed
 
 * Slow operations in `identify_game` and candidate listing are now deferred, reducing unnecessary work when no match is found early.
@@ -235,7 +237,8 @@
 * The gamest_plugins namespace package should work properly, now.
 * Restarting as administrator should work correctly, now.
 
-[Unreleased]: https://github.com/sopoforic/gamest/compare/v4.1.10...HEAD
+[Unreleased]: https://github.com/sopoforic/gamest/compare/v4.1.11...HEAD
+[4.1.11]: https://github.com/sopoforic/gamest/compare/v4.1.10...v4.1.11
 [4.1.10]: https://github.com/sopoforic/gamest/compare/v4.1.9...v4.1.10
 [4.1.9]: https://github.com/sopoforic/gamest/compare/v4.0.1...v4.1.9
 [4.0.1]: https://github.com/sopoforic/gamest/compare/v4.0.0...v4.0.1
