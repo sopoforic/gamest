@@ -5,6 +5,7 @@
 ### Changed
 
 * Upgraded from SQLAlchemy 1.4 to 2.x.
+* Added more default ignored process names.
 
 ## [4.1.11] - 2026-05-20
 
