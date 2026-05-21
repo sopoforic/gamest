@@ -116,7 +116,8 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
 
     def _iter_survivors(self):
         return (p for p in psutil.process_iter(['name', 'create_time'])
-                if p.info['name'] not in trash_names
+                if p.info.get('name')
+                and p.info['name'] not in trash_names
                 and not any(re.match(t, p.info['name']) for t in trash_regex))
 
     def candidates(self):
@@ -169,7 +170,7 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
                 continue
 
         # Oldest process first.
-        candidates.sort(key=lambda x: x[0].info['create_time'])
+        candidates.sort(key=lambda x: x[0].info['create_time'] or 0)
 
         for p, exe, cmdline in candidates:
             if uas := self.uas.get(exe):
