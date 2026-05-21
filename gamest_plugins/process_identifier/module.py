@@ -75,7 +75,7 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
     def __init__(self, application):
         super().__init__(application)
 
-        self.username = getpass.getuser()
+        self.username = getpass.getuser().split('\\')[-1]
         self._uas = defaultdict(list)
         self._checked_procs = set()
         trash_regex.extend(r for r in self.config.getlist('trash_names') if r)
@@ -129,7 +129,7 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
                     exe = p.exe()
                     cmdline = p.cmdline()
                     create_time = p.create_time()
-                if username.endswith(self.username):
+                if username.split('\\')[-1] == self.username:
                     procs.append((p, exe, cmdline, create_time))
             except Exception:
                 pass
@@ -165,7 +165,7 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
                 continue
             try:
                 with p.oneshot():
-                    if not p.username().endswith(self.username):
+                    if p.username().split('\\')[-1] != self.username:
                         continue
                     candidates.append((p, p.exe(), p.cmdline()))
             except psutil.NoSuchProcess:
