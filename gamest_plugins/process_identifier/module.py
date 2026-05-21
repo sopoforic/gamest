@@ -168,7 +168,10 @@ class ProcessIdentifierPlugin(IdentifierPlugin):
                     if not p.username().endswith(self.username):
                         continue
                     candidates.append((p, p.exe(), p.cmdline()))
+            except psutil.NoSuchProcess:
+                continue
             except Exception:
+                self._checked_procs.add(key)
                 continue
 
         # Oldest process first.
