@@ -15,7 +15,7 @@ setup(
         "": ["icon.png"],
     },
     packages=find_namespace_packages(include=['gamest', 'gamest.*', 'gamest_plugins', 'gamest_plugins.*']),
-    install_requires=['sqlalchemy>=2.0', 'psutil~=7.2', 'requests', 'appdirs'],
+    install_requires=['sqlalchemy>=2.0,<3.0', 'psutil~=7.2', 'requests', 'appdirs'],
     setup_requires=['setuptools_scm'],
     use_scm_version=True,
     entry_points={
