@@ -683,6 +683,14 @@ class SettingsBox(Frame):
             if valid:
                 for tab in self.notebook.tabs():
                     self.nametowidget(tab).save_settings()
+                if db.IS_REMOTE:
+                    settings = Session.scalars(select(db.Settings)).all()
+                    r = requests.post(
+                        REMOTE_BASE_URL + '/update-settings',
+                        json=[{'owner': s.owner, 'key': s.key, 'value': s.value}
+                              for s in settings])
+                    r.raise_for_status()
+                Session.commit()
                 self.parent.event_generate("<<SettingsUpdated>>")
                 self.on_closing()
         except Exception as exc:
